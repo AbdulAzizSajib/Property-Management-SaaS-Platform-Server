@@ -1,0 +1,25 @@
+model Subscription {
+    id             String             @id @default(cuid())
+    plan           SubscriptionPlan   @default(FREE_TRIAL)
+    status         SubscriptionStatus @default(TRIALING)
+    buildingLimit  Int                @default(1)
+    unitLimit      Int                @default(10)
+    tenantLimit    Int                @default(10)
+    smsEnabled     Boolean            @default(false)
+    customBranding Boolean            @default(false)
+    multiAdmin     Boolean            @default(false)
+    priceMonthly   Decimal            @db.Decimal(10, 2)
+    trialEndsAt    DateTime?
+    startDate      DateTime           @default(now())
+    endDate        DateTime?
+    autoRenew      Boolean            @default(true)
+    createdAt      DateTime           @default(now())
+    updatedAt      DateTime           @updatedAt
+
+    organizationId String       @unique
+    organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+    payments PlatformPayment[]
+
+    @@index([status])
+}

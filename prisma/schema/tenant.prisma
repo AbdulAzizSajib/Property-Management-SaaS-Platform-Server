@@ -1,0 +1,32 @@
+model Tenant {
+    id               String   @id @default(cuid())
+    name             String
+    phone            String
+    email            String?
+    nidNumber        String?
+    emergencyContact String?
+    emergencyName    String?
+    occupation       String?
+    permanentAddress String?
+    photoUrl         String?
+    isActive         Boolean  @default(true)
+    createdAt        DateTime @default(now())
+    updatedAt        DateTime @updatedAt
+
+    organizationId String
+    organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+    // Optional linked User account for tenant-app login
+    userId String? @unique
+    user   User?   @relation(fields: [userId], references: [id])
+
+    leases     Lease[]
+    invoices   Invoice[]
+    payments   Payment[]
+    agreements RentAgreement[]
+    complaints Complaint[]
+    documents  Document[]
+
+    @@index([organizationId])
+    @@index([phone])
+}

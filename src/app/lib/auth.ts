@@ -1,0 +1,186 @@
+import { betterAuth } from "better-auth";
+import { prismaAdapter } from "better-auth/adapters/prisma";
+import { bearer, emailOTP } from "better-auth/plugins";
+import { Role } from "../../generated/prisma/enums";
+import { envVars } from "../config/env";
+import { sendEmail } from "../utils/email";
+import { prisma } from "./prisma";
+
+const ONE_DAY_SECONDS = 60 * 60 * 24;
+
+export const auth = betterAuth({
+    baseURL: envVars.BETTER_AUTH_URL,
+    secret: envVars.BETTER_AUTH_SECRET,
+    database: prismaAdapter(prisma, {
+        provider: "postgresql",
+    }),
+
+    emailAndPassword: {
+        enabled: true,
+        requireEmailVerification: true,
+    },
+
+    socialProviders: {
+        google: {
+            clientId: envVars.GOOGLE_CLIENT_ID,
+            clientSecret: envVars.GOOGLE_CLIENT_SECRET,
+            mapProfileToUser: () => {
+                return {
+                    role: Role.OWNER,
+                    isActive: true,
+                    needPasswordChange: false,
+                    emailVerified: true,
+                    isDeleted: false,
+                    deletedAt: null,
+                };
+            },
+        },
+    },
+
+    emailVerification: {
+        sendOnSignUp: true,
+        sendOnSignIn: true,
+        autoSignInAfterVerification: true,
+    },
+
+    user: {
+        additionalFields: {
+            role: {
+                type: "string",
+                required: false,
+                defaultValue: Role.OWNER,
+                input: false,
+            },
+            contactNumber: {
+                type: "string",
+                required: false,
+            },
+            organizationId: {
+                type: "string",
+                required: false,
+                input: false,
+            },
+            isActive: {
+                type: "boolean",
+                required: false,
+                defaultValue: true,
+                input: false,
+            },
+            needPasswordChange: {
+                type: "boolean",
+                required: false,
+                defaultValue: false,
+                input: false,
+            },
+            isDeleted: {
+                type: "boolean",
+                required: false,
+                defaultValue: false,
+                input: false,
+            },
+            deletedAt: {
+                type: "date",
+                required: false,
+                input: false,
+            },
+            lastLoginAt: {
+                type: "date",
+                required: false,
+                input: false,
+            },
+        },
+    },
+
+    plugins: [
+        bearer(),
+        emailOTP({
+            overrideDefaultEmailVerification: true,
+            async sendVerificationOTP({
+                email,
+                otp,
+                type,
+            }: {
+                email: string;
+                otp: string;
+                type: "email-verification" | "forget-password" | "sign-in";
+            }) {
+                if (type === "email-verification") {
+                    const user = await prisma.user.findUnique({
+                        where: { email },
+                    });
+
+                    if (!user) {
+                        console.error(`User with email ${email} not found. Cannot send verification OTP.`);
+                        return;
+                    }
+
+                    if (user.role === Role.SUPER_ADMIN) {
+                        console.log(`User ${email} is a super admin. Skipping verification OTP.`);
+                        return;
+                    }
+
+                    if (!user.emailVerified) {
+                        sendEmail({
+                            to: email,
+                            subject: "Verify your email",
+                            templateName: "otp",
+                            templateData: { name: user.name, otp },
+                        });
+                    }
+                } else if (type === "forget-password") {
+                    const user = await prisma.user.findUnique({
+                        where: { email },
+                    });
+
+                    if (user) {
+                        sendEmail({
+                            to: email,
+                            subject: "Password Reset OTP",
+                            templateName: "otp",
+                            templateData: { name: user.name, otp },
+                        });
+                    }
+                }
+            },
+            expiresIn: 2 * 60,
+            otpLength: 6,
+        }),
+    ],
+
+    session: {
+        expiresIn: ONE_DAY_SECONDS * 7,
+        updateAge: ONE_DAY_SECONDS,
+        cookieCache: {
+            enabled: true,
+            maxAge: 5 * 60,
+        },
+    },
+
+    redirectURLs: {
+        signIn: `${envVars.BETTER_AUTH_URL}/api/v1/auth/google/success`,
+    },
+
+    trustedOrigins: [envVars.BETTER_AUTH_URL, envVars.FRONTEND_URL],
+
+    advanced: {
+        useSecureCookies: envVars.NODE_ENV === "production",
+        cookies: {
+            state: {
+                attributes: {
+                    sameSite: envVars.NODE_ENV === "production" ? "none" : "lax",
+                    secure: envVars.NODE_ENV === "production",
+                    httpOnly: true,
+                    path: "/",
+                },
+            },
+            sessionToken: {
+                attributes: {
+                    sameSite: envVars.NODE_ENV === "production" ? "none" : "lax",
+                    secure: envVars.NODE_ENV === "production",
+                    httpOnly: true,
+                    path: "/",
+                },
+            },
+        },
+    },
+});

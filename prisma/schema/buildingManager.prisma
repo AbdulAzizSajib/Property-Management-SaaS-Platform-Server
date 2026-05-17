@@ -1,0 +1,11 @@
+model BuildingManager {
+    id         String   @id @default(cuid())
+    buildingId String
+    building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+    managerId  String
+    manager    User     @relation(fields: [managerId], references: [id], onDelete: Cascade)
+    assignedAt DateTime @default(now())
+
+    @@unique([buildingId, managerId])
+    @@index([managerId])
+}

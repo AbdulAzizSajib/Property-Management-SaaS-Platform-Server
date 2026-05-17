@@ -1,0 +1,29 @@
+model Document {
+    id        String       @id @default(cuid())
+    type      DocumentType @default(OTHER)
+    name      String
+    fileUrl   String
+    fileSize  Int?
+    mimeType  String?
+    createdAt DateTime     @default(now())
+
+    organizationId String
+    organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+    tenantId String?
+    tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+    buildingId String?
+    building   Building? @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+
+    leaseId String?
+    lease   Lease?  @relation(fields: [leaseId], references: [id], onDelete: SetNull)
+
+    uploadedById String?
+    uploadedBy   User?   @relation("DocumentUploadedBy", fields: [uploadedById], references: [id])
+
+    @@index([organizationId])
+    @@index([tenantId])
+    @@index([buildingId])
+    @@index([type])
+}

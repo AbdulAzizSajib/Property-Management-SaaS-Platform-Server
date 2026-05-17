@@ -1,0 +1,168 @@
+enum Role {
+  SUPER_ADMIN // SaaS platform owner
+  OWNER // Landlord / property owner
+  MANAGER // Manages buildings on behalf of owner
+  CARETAKER // Limited: payments, complaints, tenant updates
+  TENANT // Renter — uses tenant app
+}
+
+enum BuildingType {
+  RESIDENTIAL
+  COMMERCIAL
+  MIXED
+  HOSTEL
+  MESS
+}
+
+enum UnitType {
+  FLAT
+  SHOP
+  OFFICE
+  ROOM // hostel/mess room
+  GARAGE
+  WAREHOUSE
+}
+
+enum UnitStatus {
+  OCCUPIED
+  VACANT
+  UNDER_MAINTENANCE
+  RESERVED
+}
+
+enum LeaseStatus {
+  ACTIVE
+  EXPIRED
+  TERMINATED
+  PENDING // agreement created but not started
+}
+
+enum PaymentStatus {
+  PAID
+  PARTIAL
+  DUE
+  OVERDUE
+  ADVANCE_ADJUSTED
+}
+
+enum PaymentMethod {
+  CASH
+  BKASH
+  NAGAD
+  ROCKET
+  BANK_TRANSFER
+  SSLCOMMERZ
+  CARD
+  CHEQUE
+}
+
+enum InvoiceType {
+  RENT
+  SERVICE_CHARGE
+  UTILITY
+  PENALTY
+  OTHER
+}
+
+enum ExpenseCategory {
+  ELECTRICITY
+  WATER
+  GAS
+  INTERNET
+  SECURITY_SALARY
+  CARETAKER_SALARY
+  CLEANER_SALARY
+  LIFT_MAINTENANCE
+  GENERATOR_FUEL
+  REPAIRING
+  CLEANING
+  TAX
+  INSURANCE
+  OTHER
+}
+
+enum ComplaintCategory {
+  PLUMBING
+  ELECTRICAL
+  LIFT
+  AC
+  STRUCTURAL
+  SECURITY
+  CLEANLINESS
+  OTHER
+}
+
+enum ComplaintStatus {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  REJECTED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum NotificationType {
+  RENT_DUE
+  BILL_REMINDER
+  CONTRACT_EXPIRY
+  LATE_PAYMENT
+  COMPLAINT_UPDATE
+  PAYMENT_RECEIVED
+  GENERAL
+}
+
+enum NotificationChannel {
+  SMS
+  WHATSAPP
+  EMAIL
+  IN_APP
+  PUSH
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  DELIVERED
+  READ
+}
+
+enum SubscriptionPlan {
+  FREE_TRIAL
+  BASIC
+  STANDARD
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum AgreementStatus {
+  DRAFT
+  SENT_FOR_SIGNATURE
+  SIGNED
+  EXPIRED
+  CANCELLED
+}
+
+enum DocumentType {
+  NID
+  PASSPORT
+  AGREEMENT_PDF
+  TRADE_LICENSE
+  PHOTO
+  RECEIPT
+  OTHER
+}

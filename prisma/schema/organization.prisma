@@ -1,0 +1,29 @@
+model Organization {
+    id        String   @id @default(cuid())
+    name      String
+    slug      String   @unique
+    logoUrl   String?
+    phone     String?
+    email     String?
+    address   String?
+    isActive  Boolean  @default(true)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    users            User[]
+    buildings        Building[]
+    tenants          Tenant[]
+    subscription     Subscription?
+    invoices         Invoice[]
+    payments         Payment[]
+    expenses         Expense[]
+    leases           Lease[]
+    agreements       RentAgreement[]
+    complaints       Complaint[]
+    notifications    Notification[]
+    documents        Document[]
+    platformPayments PlatformPayment[]
+    activityLogs     ActivityLog[]
+
+    @@index([slug])
+}
