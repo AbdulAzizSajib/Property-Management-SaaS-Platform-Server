@@ -8,6 +8,7 @@ import { auth } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
 import { jwtUtils } from "../../utils/jwt";
 import { tokenUtils } from "../../utils/token";
+import { SubscriptionService } from "../subscription/subscription.service";
 import {
     IChangePasswordPayload,
     ILoginUserPayload,
@@ -79,6 +80,11 @@ const registerOwner = async (payload: IRegisterOwnerPayload) => {
                 where: { id: data.user.id },
                 data: { organizationId: createdOrg.id },
             });
+
+            await SubscriptionService.createTrialSubscriptionForOrg(
+                createdOrg.id,
+                tx,
+            );
 
             return createdOrg;
         });

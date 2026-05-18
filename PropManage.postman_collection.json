@@ -1,0 +1,766 @@
+{
+  "info": {
+    "name": "Property Management SaaS",
+    "description": "Postman collection for Property Management SaaS backend (auth, users, admins, organizations, subscriptions, buildings, floors, units, tenants, leases, invoices, payments). Base URL is set via the `baseUrl` collection variable. After /login the access token is captured to `{{accessToken}}` automatically.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "0a3a9c2c-3e0b-4d7e-9c1b-1f1f1f1f1f1f"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000/api/v1", "type": "string" },
+    { "key": "accessToken", "value": "", "type": "string" },
+    { "key": "userId", "value": "", "type": "string" },
+    { "key": "adminId", "value": "", "type": "string" },
+    { "key": "buildingId", "value": "", "type": "string" },
+    { "key": "floorId", "value": "", "type": "string" },
+    { "key": "unitId", "value": "", "type": "string" },
+    { "key": "tenantId", "value": "", "type": "string" },
+    { "key": "leaseId", "value": "", "type": "string" },
+    { "key": "invoiceId", "value": "", "type": "string" },
+    { "key": "paymentId", "value": "", "type": "string" },
+    { "key": "caretakerId", "value": "", "type": "string" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register Owner",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Aziz Sajib\",\n  \"email\": \"owner@example.com\",\n  \"password\": \"password123\",\n  \"contactNumber\": \"01711000111\",\n  \"organization\": {\n    \"name\": \"Sajib Properties Ltd.\",\n    \"slug\": \"sajib-properties\",\n    \"phone\": \"01711000111\",\n    \"email\": \"info@sajibprops.com\",\n    \"address\": \"Lalmatia, Dhaka\"\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  const token = json?.data?.accessToken || json?.accessToken || json?.token;",
+                  "  if (token) {",
+                  "    pm.collectionVariables.set('accessToken', token);",
+                  "    console.log('accessToken saved');",
+                  "  }",
+                  "} catch (e) { console.log('No JSON body to parse'); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"owner@example.com\",\n  \"password\": \"password123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/auth/me", "host": ["{{baseUrl}}"], "path": ["auth", "me"] }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/refresh-token", "host": ["{{baseUrl}}"], "path": ["auth", "refresh-token"] },
+            "body": { "mode": "raw", "raw": "{}" },
+            "description": "Refresh token is read from the `refreshToken` cookie set during login."
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/change-password", "host": ["{{baseUrl}}"], "path": ["auth", "change-password"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"password123\",\n  \"newPassword\": \"newPassword123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/auth/logout", "host": ["{{baseUrl}}"], "path": ["auth", "logout"] }
+          }
+        },
+        {
+          "name": "Verify Email (OTP)",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/verify-email", "host": ["{{baseUrl}}"], "path": ["auth", "verify-email"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"owner@example.com\",\n  \"otp\": \"123456\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Forget Password",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/forget-password", "host": ["{{baseUrl}}"], "path": ["auth", "forget-password"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"owner@example.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/reset-password", "host": ["{{baseUrl}}"], "path": ["auth", "reset-password"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"owner@example.com\",\n  \"otp\": \"123456\",\n  \"newPassword\": \"newPassword123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Google OAuth — Start",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{baseUrl}}/auth/login/google", "host": ["{{baseUrl}}"], "path": ["auth", "login", "google"] },
+            "description": "Open this URL in a browser to initiate Google OAuth — won't complete inside Postman."
+          }
+        },
+        {
+          "name": "Google OAuth — Success Callback",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{baseUrl}}/auth/google/success", "host": ["{{baseUrl}}"], "path": ["auth", "google", "success"] }
+          }
+        },
+        {
+          "name": "Google OAuth — Error",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{baseUrl}}/auth/oauth/error", "host": ["{{baseUrl}}"], "path": ["auth", "oauth", "error"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Create Staff (Manager / Caretaker)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/users/create-staff", "host": ["{{baseUrl}}"], "path": ["users", "create-staff"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"staffPass123\",\n  \"role\": \"MANAGER\",\n  \"user\": {\n    \"name\": \"Hasan Ali\",\n    \"email\": \"hasan@example.com\",\n    \"contactNumber\": \"01711000222\",\n    \"image\": \"https://example.com/hasan.png\"\n  },\n  \"buildingIds\": []\n}"
+            },
+            "description": "Allowed: OWNER, SUPER_ADMIN. `role` must be MANAGER or CARETAKER."
+          }
+        },
+        {
+          "name": "Create Tenant",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/users/create-tenant", "host": ["{{baseUrl}}"], "path": ["users", "create-tenant"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenant\": {\n    \"name\": \"Rahim Uddin\",\n    \"phone\": \"01711000333\",\n    \"email\": \"rahim@example.com\",\n    \"nidNumber\": \"1234567890\",\n    \"emergencyContact\": \"01711000444\",\n    \"emergencyName\": \"Karim Uddin\",\n    \"occupation\": \"Software Engineer\",\n    \"permanentAddress\": \"Lalmatia, Dhaka\",\n    \"photoUrl\": \"https://example.com/rahim.png\"\n  },\n  \"createLoginAccount\": true,\n  \"password\": \"tenantPass123\"\n}"
+            },
+            "description": "Allowed: OWNER, MANAGER, CARETAKER. If `createLoginAccount` is true, `password` is required."
+          }
+        },
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "role", "value": "OWNER", "disabled": true },
+                { "key": "search", "value": "rahim", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User By Id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Aziz Sajib (Updated)\",\n  \"contactNumber\": \"01711999888\",\n  \"image\": \"https://example.com/new.png\",\n  \"isActive\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Soft Delete User",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Organizations",
+      "item": [
+        {
+          "name": "Get My Organization",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/organizations/me", "host": ["{{baseUrl}}"], "path": ["organizations", "me"] },
+            "description": "Allowed: OWNER, MANAGER, CARETAKER. Returns the caller's organization with its subscription."
+          }
+        },
+        {
+          "name": "Update My Organization",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/organizations/me", "host": ["{{baseUrl}}"], "path": ["organizations", "me"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sajib Properties Ltd. (Updated)\",\n  \"logoUrl\": \"https://example.com/logo.png\",\n  \"phone\": \"01711000111\",\n  \"email\": \"info@sajibprops.com\",\n  \"address\": \"House 12, Road 5, Lalmatia, Dhaka\"\n}"
+            },
+            "description": "Allowed: OWNER only. All fields optional."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Subscriptions",
+      "item": [
+        {
+          "name": "Get My Subscription",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/subscriptions/me", "host": ["{{baseUrl}}"], "path": ["subscriptions", "me"] },
+            "description": "Allowed: OWNER, MANAGER. Returns active subscription for caller's organization (plan, status, limits, trial end date)."
+          }
+        },
+        {
+          "name": "Change Plan",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/subscriptions/me/plan", "host": ["{{baseUrl}}"], "path": ["subscriptions", "me", "plan"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"plan\": \"STANDARD\"\n}"
+            },
+            "description": "Allowed: OWNER only. Plan must be one of FREE_TRIAL, BASIC, STANDARD, ENTERPRISE. Limits, price and status are re-applied from preset on change."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Buildings",
+      "item": [
+        {
+          "name": "Create Building",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/buildings", "host": ["{{baseUrl}}"], "path": ["buildings"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Lalmatia Block A\",\n  \"type\": \"RESIDENTIAL\",\n  \"address\": \"House 12, Road 5, Lalmatia, Dhaka\",\n  \"city\": \"Dhaka\",\n  \"area\": \"Lalmatia\",\n  \"totalFloors\": 5,\n  \"description\": \"5-storey residential building\"\n}"
+            },
+            "description": "Allowed: OWNER. Subscription building limit is enforced."
+          }
+        },
+        {
+          "name": "Get All Buildings",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/buildings", "host": ["{{baseUrl}}"], "path": ["buildings"] }
+          }
+        },
+        {
+          "name": "Get Building By Id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/buildings/{{buildingId}}", "host": ["{{baseUrl}}"], "path": ["buildings", "{{buildingId}}"] }
+          }
+        },
+        {
+          "name": "Update Building",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/buildings/{{buildingId}}", "host": ["{{baseUrl}}"], "path": ["buildings", "{{buildingId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Lalmatia Block A (Renamed)\",\n  \"totalFloors\": 6\n}"
+            }
+          }
+        },
+        {
+          "name": "Assign Caretaker",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/buildings/{{buildingId}}/assign-caretaker", "host": ["{{baseUrl}}"], "path": ["buildings", "{{buildingId}}", "assign-caretaker"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"caretakerId\": \"{{caretakerId}}\"\n}"
+            },
+            "description": "Pass null in caretakerId to unassign."
+          }
+        },
+        {
+          "name": "Delete Building",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/buildings/{{buildingId}}", "host": ["{{baseUrl}}"], "path": ["buildings", "{{buildingId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Floors",
+      "item": [
+        {
+          "name": "Create Floor",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/floors", "host": ["{{baseUrl}}"], "path": ["floors"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"buildingId\": \"{{buildingId}}\",\n  \"name\": \"Ground Floor\",\n  \"floorNumber\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Floors By Building",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/floors?buildingId={{buildingId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["floors"],
+              "query": [{ "key": "buildingId", "value": "{{buildingId}}" }]
+            }
+          }
+        },
+        {
+          "name": "Get Floor By Id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/floors/{{floorId}}", "host": ["{{baseUrl}}"], "path": ["floors", "{{floorId}}"] }
+          }
+        },
+        {
+          "name": "Update Floor",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/floors/{{floorId}}", "host": ["{{baseUrl}}"], "path": ["floors", "{{floorId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"1st Floor\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Floor",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/floors/{{floorId}}", "host": ["{{baseUrl}}"], "path": ["floors", "{{floorId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Units",
+      "item": [
+        {
+          "name": "Create Unit",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/units", "host": ["{{baseUrl}}"], "path": ["units"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"buildingId\": \"{{buildingId}}\",\n  \"floorId\": \"{{floorId}}\",\n  \"name\": \"3A\",\n  \"type\": \"FLAT\",\n  \"bedrooms\": 3,\n  \"bathrooms\": 2,\n  \"sizeSqft\": 1200,\n  \"baseRent\": 18000,\n  \"serviceCharge\": 1500\n}"
+            },
+            "description": "Subscription unit limit is enforced."
+          }
+        },
+        {
+          "name": "Get All Units",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/units?buildingId={{buildingId}}&status=VACANT",
+              "host": ["{{baseUrl}}"],
+              "path": ["units"],
+              "query": [
+                { "key": "buildingId", "value": "{{buildingId}}" },
+                { "key": "floorId", "value": "{{floorId}}", "disabled": true },
+                { "key": "status", "value": "VACANT" },
+                { "key": "type", "value": "FLAT", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Unit By Id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/units/{{unitId}}", "host": ["{{baseUrl}}"], "path": ["units", "{{unitId}}"] }
+          }
+        },
+        {
+          "name": "Update Unit",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/units/{{unitId}}", "host": ["{{baseUrl}}"], "path": ["units", "{{unitId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseRent\": 19000,\n  \"status\": \"UNDER_MAINTENANCE\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Unit",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/units/{{unitId}}", "host": ["{{baseUrl}}"], "path": ["units", "{{unitId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tenants",
+      "item": [
+        {
+          "name": "Create Tenant",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/tenants", "host": ["{{baseUrl}}"], "path": ["tenants"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Rahim Uddin\",\n  \"phone\": \"01711000333\",\n  \"email\": \"rahim@example.com\",\n  \"nidNumber\": \"1234567890\",\n  \"emergencyContact\": \"01711000444\",\n  \"emergencyName\": \"Karim Uddin\",\n  \"occupation\": \"Software Engineer\",\n  \"permanentAddress\": \"Lalmatia, Dhaka\",\n  \"createLoginAccount\": false\n}"
+            },
+            "description": "Set createLoginAccount=true and provide password if tenant needs portal login. Subscription tenant limit is enforced."
+          }
+        },
+        {
+          "name": "Get All Tenants",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/tenants", "host": ["{{baseUrl}}"], "path": ["tenants"] }
+          }
+        },
+        {
+          "name": "Get Tenant By Id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/tenants/{{tenantId}}", "host": ["{{baseUrl}}"], "path": ["tenants", "{{tenantId}}"] }
+          }
+        },
+        {
+          "name": "Update Tenant",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/tenants/{{tenantId}}", "host": ["{{baseUrl}}"], "path": ["tenants", "{{tenantId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"occupation\": \"Senior Software Engineer\",\n  \"emergencyContact\": \"01711000555\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Deactivate Tenant",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/tenants/{{tenantId}}", "host": ["{{baseUrl}}"], "path": ["tenants", "{{tenantId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Leases",
+      "item": [
+        {
+          "name": "Create Lease",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/leases", "host": ["{{baseUrl}}"], "path": ["leases"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"unitId\": \"{{unitId}}\",\n  \"startDate\": \"2026-06-01\",\n  \"endDate\": \"2027-05-31\",\n  \"moveInDate\": \"2026-06-01\",\n  \"monthlyRent\": 18000,\n  \"serviceCharge\": 1500,\n  \"securityDeposit\": 36000,\n  \"rentDueDay\": 5\n}"
+            },
+            "description": "Creates lease, marks unit OCCUPIED, and auto-generates first month invoice."
+          }
+        },
+        {
+          "name": "Get All Leases",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/leases", "host": ["{{baseUrl}}"], "path": ["leases"] }
+          }
+        },
+        {
+          "name": "Get Lease By Id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/leases/{{leaseId}}", "host": ["{{baseUrl}}"], "path": ["leases", "{{leaseId}}"] }
+          }
+        },
+        {
+          "name": "Terminate Lease",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/leases/{{leaseId}}/terminate", "host": ["{{baseUrl}}"], "path": ["leases", "{{leaseId}}", "terminate"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"moveOutDate\": \"2026-12-31\",\n  \"notes\": \"Tenant relocating to another city\"\n}"
+            },
+            "description": "Marks lease TERMINATED and unit VACANT."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invoices",
+      "item": [
+        {
+          "name": "Generate Single Invoice",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/invoices/generate", "host": ["{{baseUrl}}"], "path": ["invoices", "generate"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"leaseId\": \"{{leaseId}}\",\n  \"billingMonth\": \"2026-07-01\",\n  \"utilityAmount\": 800,\n  \"penaltyAmount\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "Generate Monthly Batch",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/invoices/generate-monthly", "host": ["{{baseUrl}}"], "path": ["invoices", "generate-monthly"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"billingMonth\": \"2026-08-01\"\n}"
+            },
+            "description": "Generates invoices for all ACTIVE leases for the given month. Skips leases that already have an invoice that month."
+          }
+        },
+        {
+          "name": "Get All Invoices",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/invoices?status=DUE",
+              "host": ["{{baseUrl}}"],
+              "path": ["invoices"],
+              "query": [
+                { "key": "status", "value": "DUE" },
+                { "key": "leaseId", "value": "{{leaseId}}", "disabled": true },
+                { "key": "tenantId", "value": "{{tenantId}}", "disabled": true },
+                { "key": "unitId", "value": "{{unitId}}", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Invoice By Id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/invoices/{{invoiceId}}", "host": ["{{baseUrl}}"], "path": ["invoices", "{{invoiceId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "Record Payment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/payments", "host": ["{{baseUrl}}"], "path": ["payments"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invoiceId\": \"{{invoiceId}}\",\n  \"amount\": 19500,\n  \"method\": \"BKASH\",\n  \"transactionId\": \"9ABC123XYZ\",\n  \"notes\": \"June rent\"\n}"
+            },
+            "description": "Records payment against invoice. Updates invoice status (PARTIAL/PAID) automatically."
+          }
+        },
+        {
+          "name": "Get All Payments",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments"],
+              "query": [
+                { "key": "leaseId", "value": "{{leaseId}}", "disabled": true },
+                { "key": "tenantId", "value": "{{tenantId}}", "disabled": true },
+                { "key": "invoiceId", "value": "{{invoiceId}}", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Payment By Id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/payments/{{paymentId}}", "host": ["{{baseUrl}}"], "path": ["payments", "{{paymentId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admins",
+      "item": [
+        {
+          "name": "Get All Admins",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/admins", "host": ["{{baseUrl}}"], "path": ["admins"] },
+            "description": "Allowed: ADMIN, SUPER_ADMIN. Returns non-deleted admins with linked user."
+          }
+        },
+        {
+          "name": "Get Admin By Id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/admins/{{adminId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["admins", "{{adminId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Admin",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/admins/{{adminId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["admins", "{{adminId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"admin\": {\n    \"name\": \"Super Admin (Updated)\",\n    \"profilePhoto\": \"https://example.com/admin.png\",\n    \"contactNumber\": \"01711555000\"\n  }\n}"
+            },
+            "description": "Allowed: SUPER_ADMIN only."
+          }
+        },
+        {
+          "name": "Soft Delete Admin",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/admins/{{adminId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["admins", "{{adminId}}"]
+            },
+            "description": "Allowed: SUPER_ADMIN only. Marks admin & user as deleted, removes sessions & accounts. Cannot delete yourself."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Root",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": {
+              "raw": "http://localhost:5000/",
+              "host": ["http://localhost:5000"],
+              "path": [""]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

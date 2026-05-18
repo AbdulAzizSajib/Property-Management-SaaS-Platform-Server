@@ -1,9 +1,16 @@
 enum Role {
   SUPER_ADMIN // SaaS platform owner
+  ADMIN // Platform admin (staff of SaaS owner)
   OWNER // Landlord / property owner
   MANAGER // Manages buildings on behalf of owner
   CARETAKER // Limited: payments, complaints, tenant updates
   TENANT // Renter — uses tenant app
+}
+
+enum UserStatus {
+  ACTIVE
+  BLOCKED
+  DELETED
 }
 
 enum BuildingType {

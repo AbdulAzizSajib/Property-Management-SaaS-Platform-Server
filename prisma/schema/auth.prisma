@@ -2,13 +2,14 @@ model User {
   id                 String    @id
   name               String
   email              String    @unique
-  emailVerified      Boolean   @default(false)
-  role               Role      @default(OWNER)
+  emailVerified      Boolean    @default(false)
+  role               Role       @default(OWNER)
+  status             UserStatus @default(ACTIVE)
   contactNumber      String?
-  isActive           Boolean   @default(true)
+  isActive           Boolean    @default(true)
   lastLoginAt        DateTime?
-  needPasswordChange Boolean   @default(false)
-  isDeleted          Boolean   @default(false)
+  needPasswordChange Boolean    @default(false)
+  isDeleted          Boolean    @default(false)
   deletedAt          DateTime?
   image              String?
   createdAt          DateTime  @default(now())
@@ -24,6 +25,7 @@ model User {
   caretakerOf      Building[]        @relation("BuildingCaretaker")
 
   tenantProfile Tenant?
+  adminProfile  Admin?
 
   recordedPayments   Payment[]      @relation("PaymentRecordedBy")
   assignedComplaints Complaint[]    @relation("ComplaintAssignedTo")
