@@ -20,14 +20,6 @@ export const registerOwnerZodSchema = z.object({
             .string("Organization name is required")
             .min(2, "Organization name must be at least 2 characters")
             .max(100, "Organization name must be at most 100 characters"),
-        slug: z
-            .string("Organization slug is required")
-            .min(2, "Slug must be at least 2 characters")
-            .max(60, "Slug must be at most 60 characters")
-            .regex(
-                /^[a-z0-9-]+$/,
-                "Slug must contain only lowercase letters, numbers, and hyphens",
-            ),
         phone: z.string().optional(),
         email: z.email("Invalid organization email").optional(),
         address: z.string().max(200).optional(),

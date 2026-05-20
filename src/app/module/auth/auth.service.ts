@@ -7,6 +7,7 @@ import { IRequestUser } from "../../interfaces/requestUser.interface";
 import { auth } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
 import { jwtUtils } from "../../utils/jwt";
+import { generateUniqueOrgSlug } from "../../utils/slug";
 import { tokenUtils } from "../../utils/token";
 import { SubscriptionService } from "../subscription/subscription.service";
 import {
@@ -17,22 +18,22 @@ import {
 
 const buildTokenPayload = (user: {
     id: string;
-    role: Role;
+    role?: string | Role | null;
     name: string;
     email: string;
-    isActive: boolean;
-    isDeleted: boolean;
+    isActive?: boolean | null;
+    isDeleted?: boolean | null;
     emailVerified: boolean;
-    organizationId: string | null;
+    organizationId?: string | null;
 }) => ({
     userId: user.id,
-    role: user.role,
+    role: (user.role ?? Role.OWNER) as Role,
     name: user.name,
     email: user.email,
-    isActive: user.isActive,
-    isDeleted: user.isDeleted,
+    isActive: user.isActive ?? true,
+    isDeleted: user.isDeleted ?? false,
     emailVerified: user.emailVerified,
-    organizationId: user.organizationId,
+    organizationId: user.organizationId ?? null,
 });
 
 const registerOwner = async (payload: IRegisterOwnerPayload) => {
@@ -43,20 +44,13 @@ const registerOwner = async (payload: IRegisterOwnerPayload) => {
         throw new AppError(status.CONFLICT, "User with this email already exists");
     }
 
-    const existingOrg = await prisma.organization.findUnique({
-        where: { slug: organization.slug },
-    });
-    if (existingOrg) {
-        throw new AppError(status.CONFLICT, "Organization slug already taken");
-    }
+    const slug = await generateUniqueOrgSlug(organization.name);
 
     const data = await auth.api.signUpEmail({
         body: {
             name,
             email,
             password,
-            role: Role.OWNER,
-            contactNumber,
         },
     });
 
@@ -69,7 +63,7 @@ const registerOwner = async (payload: IRegisterOwnerPayload) => {
             const createdOrg = await tx.organization.create({
                 data: {
                     name: organization.name,
-                    slug: organization.slug,
+                    slug,
                     phone: organization.phone,
                     email: organization.email,
                     address: organization.address,
@@ -78,7 +72,11 @@ const registerOwner = async (payload: IRegisterOwnerPayload) => {
 
             await tx.user.update({
                 where: { id: data.user.id },
-                data: { organizationId: createdOrg.id },
+                data: {
+                    organizationId: createdOrg.id,
+                    role: Role.OWNER,
+                    contactNumber,
+                },
             });
 
             await SubscriptionService.createTrialSubscriptionForOrg(

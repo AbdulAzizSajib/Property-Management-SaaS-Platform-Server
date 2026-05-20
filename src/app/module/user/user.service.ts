@@ -58,9 +58,6 @@ const createStaff = async (
             email: payload.user.email,
             password: payload.password,
             name: payload.user.name,
-            role: payload.role,
-            contactNumber: payload.user.contactNumber,
-            needPasswordChange: true,
         },
     });
 
@@ -70,7 +67,10 @@ const createStaff = async (
                 where: { id: userData.user.id },
                 data: {
                     organizationId,
+                    role: payload.role,
+                    contactNumber: payload.user.contactNumber,
                     image: payload.user.image,
+                    needPasswordChange: true,
                 },
             });
 
@@ -146,15 +146,17 @@ const createTenant = async (
                 email: payload.tenant.email,
                 password: payload.password,
                 name: payload.tenant.name,
-                role: Role.TENANT,
-                contactNumber: payload.tenant.phone,
-                needPasswordChange: true,
             },
         });
 
         await prisma.user.update({
             where: { id: userData.user.id },
-            data: { organizationId },
+            data: {
+                organizationId,
+                role: Role.TENANT,
+                contactNumber: payload.tenant.phone,
+                needPasswordChange: true,
+            },
         });
 
         userId = userData.user.id;

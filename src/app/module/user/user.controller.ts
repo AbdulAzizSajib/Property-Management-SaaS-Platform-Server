@@ -38,7 +38,7 @@ const getAllUsers = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getUserById = catchAsync(async (req: Request, res: Response) => {
-    const result = await UserService.getUserById(req.params.id, req.user);
+    const result = await UserService.getUserById(req.params.id as string, req.user);
 
     sendResponse(res, {
         httpStatusCode: status.OK,
@@ -50,7 +50,7 @@ const getUserById = catchAsync(async (req: Request, res: Response) => {
 
 const updateUser = catchAsync(async (req: Request, res: Response) => {
     const result = await UserService.updateUser(
-        req.params.id,
+        req.params.id as string,
         req.body,
         req.user,
     );
@@ -64,7 +64,7 @@ const updateUser = catchAsync(async (req: Request, res: Response) => {
 });
 
 const softDeleteUser = catchAsync(async (req: Request, res: Response) => {
-    const result = await UserService.softDeleteUser(req.params.id, req.user);
+    const result = await UserService.softDeleteUser(req.params.id as string, req.user);
 
     sendResponse(res, {
         httpStatusCode: status.OK,

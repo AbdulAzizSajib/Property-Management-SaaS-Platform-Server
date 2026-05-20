@@ -10,7 +10,6 @@ export interface IRegisterOwnerPayload {
     contactNumber?: string;
     organization: {
         name: string;
-        slug: string;
         phone?: string;
         email?: string;
         address?: string;
