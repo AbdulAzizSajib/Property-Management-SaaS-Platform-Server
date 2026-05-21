@@ -8,8 +8,9 @@
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:5000/api/v1", "type": "string" },
     { "key": "accessToken", "value": "", "type": "string" },
+    { "key": "refreshToken", "value": "", "type": "string" },
+    { "key": "sessionToken", "value": "", "type": "string" },
     { "key": "userId", "value": "", "type": "string" },
-    { "key": "adminId", "value": "", "type": "string" },
     { "key": "buildingId", "value": "", "type": "string" },
     { "key": "floorId", "value": "", "type": "string" },
     { "key": "unitId", "value": "", "type": "string" },
@@ -43,6 +44,30 @@
       "item": [
         {
           "name": "Register Owner",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  const accessToken = json?.data?.accessToken;",
+                  "  const refreshToken = json?.data?.refreshToken;",
+                  "  const sessionToken = json?.data?.token;",
+                  "  const userId = json?.data?.user?.id;",
+                  "  const organizationId = json?.data?.user?.organizationId || json?.data?.organization?.id;",
+                  "  if (accessToken) pm.collectionVariables.set('accessToken', accessToken);",
+                  "  if (refreshToken) pm.collectionVariables.set('refreshToken', refreshToken);",
+                  "  if (sessionToken) pm.collectionVariables.set('sessionToken', sessionToken);",
+                  "  if (userId) pm.collectionVariables.set('userId', userId);",
+                  "  if (organizationId) pm.collectionVariables.set('organizationId', organizationId);",
+                  "  console.log('Registration tokens captured');",
+                  "} catch (e) { console.log('No JSON body to parse'); }"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "auth": { "type": "noauth" },
@@ -50,7 +75,7 @@
             "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Aziz Sajib\",\n  \"email\": \"owner@example.com\",\n  \"password\": \"password123\",\n  \"contactNumber\": \"01711000111\",\n  \"organization\": {\n    \"name\": \"Sajib Properties Ltd.\",\n    \"slug\": \"sajib-properties\",\n    \"phone\": \"01711000111\",\n    \"email\": \"info@sajibprops.com\",\n    \"address\": \"Lalmatia, Dhaka\"\n  }\n}"
+              "raw": "{\n  \"name\": \"Aziz Sajib\",\n  \"email\": \"owner@example.com\",\n  \"password\": \"password123\",\n  \"contactNumber\": \"01711000111\",\n  \"organization\": {\n    \"name\": \"Sajib Properties Ltd.\",\n    \"phone\": \"01711000111\",\n    \"email\": \"info@sajibprops.com\",\n    \"address\": \"Lalmatia, Dhaka\"\n  }\n}"
             }
           }
         },
@@ -64,11 +89,17 @@
                 "exec": [
                   "try {",
                   "  const json = pm.response.json();",
-                  "  const token = json?.data?.accessToken || json?.accessToken || json?.token;",
-                  "  if (token) {",
-                  "    pm.collectionVariables.set('accessToken', token);",
-                  "    console.log('accessToken saved');",
-                  "  }",
+                  "  const accessToken = json?.data?.accessToken;",
+                  "  const refreshToken = json?.data?.refreshToken;",
+                  "  const sessionToken = json?.data?.token;",
+                  "  const userId = json?.data?.user?.id;",
+                  "  const organizationId = json?.data?.user?.organizationId || json?.data?.organization?.id;",
+                  "  if (accessToken) pm.collectionVariables.set('accessToken', accessToken);",
+                  "  if (refreshToken) pm.collectionVariables.set('refreshToken', refreshToken);",
+                  "  if (sessionToken) pm.collectionVariables.set('sessionToken', sessionToken);",
+                  "  if (userId) pm.collectionVariables.set('userId', userId);",
+                  "  if (organizationId) pm.collectionVariables.set('organizationId', organizationId);",
+                  "  console.log('Tokens captured', { accessToken: !!accessToken, refreshToken: !!refreshToken, sessionToken: !!sessionToken });",
                   "} catch (e) { console.log('No JSON body to parse'); }"
                 ]
               }
@@ -330,7 +361,7 @@
               "mode": "raw",
               "raw": "{\n  \"plan\": \"STANDARD\"\n}"
             },
-            "description": "Allowed: OWNER only. Plan must be one of FREE_TRIAL, BASIC, STANDARD, ENTERPRISE."
+            "description": "Allowed: OWNER only. Plan must be one of BASIC, STANDARD, ENTERPRISE."
           }
         },
         {
@@ -739,59 +770,6 @@
           "request": {
             "method": "GET",
             "url": { "raw": "{{baseUrl}}/payments/{{paymentId}}", "host": ["{{baseUrl}}"], "path": ["payments", "{{paymentId}}"] }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Admins",
-      "item": [
-        {
-          "name": "Get All Admins",
-          "request": {
-            "method": "GET",
-            "url": { "raw": "{{baseUrl}}/admins", "host": ["{{baseUrl}}"], "path": ["admins"] },
-            "description": "Allowed: ADMIN, SUPER_ADMIN. Returns non-deleted admins with linked user."
-          }
-        },
-        {
-          "name": "Get Admin By Id",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/admins/{{adminId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["admins", "{{adminId}}"]
-            }
-          }
-        },
-        {
-          "name": "Update Admin",
-          "request": {
-            "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": {
-              "raw": "{{baseUrl}}/admins/{{adminId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["admins", "{{adminId}}"]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"admin\": {\n    \"name\": \"Super Admin (Updated)\",\n    \"profilePhoto\": \"https://example.com/admin.png\",\n    \"contactNumber\": \"01711555000\"\n  }\n}"
-            },
-            "description": "Allowed: SUPER_ADMIN only."
-          }
-        },
-        {
-          "name": "Soft Delete Admin",
-          "request": {
-            "method": "DELETE",
-            "url": {
-              "raw": "{{baseUrl}}/admins/{{adminId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["admins", "{{adminId}}"]
-            },
-            "description": "Allowed: SUPER_ADMIN only. Marks admin & user as deleted, removes sessions & accounts. Cannot delete yourself."
           }
         }
       ]
