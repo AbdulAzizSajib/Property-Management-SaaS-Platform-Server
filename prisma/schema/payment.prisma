@@ -16,10 +16,10 @@ model Payment {
     organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
     invoiceId String?
-    invoice   Invoice? @relation(fields: [invoiceId], references: [id])
+    invoice   Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
 
     leaseId String
-    lease   Lease  @relation(fields: [leaseId], references: [id])
+    lease   Lease  @relation(fields: [leaseId], references: [id], onDelete: Cascade)
 
     tenantId String
     tenant   Tenant @relation(fields: [tenantId], references: [id])

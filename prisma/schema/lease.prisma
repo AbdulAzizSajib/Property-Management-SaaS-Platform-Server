@@ -18,7 +18,7 @@ model Lease {
     organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
     unitId String
-    unit   Unit   @relation(fields: [unitId], references: [id])
+    unit   Unit   @relation(fields: [unitId], references: [id], onDelete: Cascade)
 
     tenantId String
     tenant   Tenant @relation(fields: [tenantId], references: [id])

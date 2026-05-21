@@ -17,7 +17,12 @@
     { "key": "leaseId", "value": "", "type": "string" },
     { "key": "invoiceId", "value": "", "type": "string" },
     { "key": "paymentId", "value": "", "type": "string" },
-    { "key": "caretakerId", "value": "", "type": "string" }
+    { "key": "caretakerId", "value": "", "type": "string" },
+    { "key": "organizationId", "value": "", "type": "string" },
+    { "key": "expenseId", "value": "", "type": "string" },
+    { "key": "complaintId", "value": "", "type": "string" },
+    { "key": "documentId", "value": "", "type": "string" },
+    { "key": "notificationId", "value": "", "type": "string" }
   ],
   "auth": {
     "type": "bearer",
@@ -299,6 +304,15 @@
       "name": "Subscriptions",
       "item": [
         {
+          "name": "Get All Plans (Public)",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{baseUrl}}/subscriptions/plans", "host": ["{{baseUrl}}"], "path": ["subscriptions", "plans"] },
+            "description": "Public endpoint — returns all available subscription plans with limits and pricing."
+          }
+        },
+        {
           "name": "Get My Subscription",
           "request": {
             "method": "GET",
@@ -316,7 +330,44 @@
               "mode": "raw",
               "raw": "{\n  \"plan\": \"STANDARD\"\n}"
             },
-            "description": "Allowed: OWNER only. Plan must be one of FREE_TRIAL, BASIC, STANDARD, ENTERPRISE. Limits, price and status are re-applied from preset on change."
+            "description": "Allowed: OWNER only. Plan must be one of FREE_TRIAL, BASIC, STANDARD, ENTERPRISE."
+          }
+        },
+        {
+          "name": "Cancel Subscription",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/subscriptions/me/cancel", "host": ["{{baseUrl}}"], "path": ["subscriptions", "me", "cancel"] },
+            "description": "Allowed: OWNER only. Cancels the active subscription for the caller's organization."
+          }
+        },
+        {
+          "name": "Reactivate Subscription",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/subscriptions/me/reactivate", "host": ["{{baseUrl}}"], "path": ["subscriptions", "me", "reactivate"] },
+            "description": "Allowed: OWNER only. Reactivates a previously cancelled subscription."
+          }
+        },
+        {
+          "name": "[Admin] List All Subscriptions",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/subscriptions", "host": ["{{baseUrl}}"], "path": ["subscriptions"] },
+            "description": "Allowed: SUPER_ADMIN only. Returns all organization subscriptions."
+          }
+        },
+        {
+          "name": "[Admin] Update Subscription",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/subscriptions/{{organizationId}}", "host": ["{{baseUrl}}"], "path": ["subscriptions", "{{organizationId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"plan\": \"ENTERPRISE\",\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "description": "Allowed: SUPER_ADMIN only. Manually override a subscription for any organization."
           }
         }
       ]
@@ -741,6 +792,401 @@
               "path": ["admins", "{{adminId}}"]
             },
             "description": "Allowed: SUPER_ADMIN only. Marks admin & user as deleted, removes sessions & accounts. Cannot delete yourself."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Expenses",
+      "item": [
+        {
+          "name": "Create Expense",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/expenses", "host": ["{{baseUrl}}"], "path": ["expenses"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Generator fuel - June\",\n  \"category\": \"GENERATOR_FUEL\",\n  \"amount\": 4500,\n  \"expenseDate\": \"2026-06-01T00:00:00.000Z\",\n  \"paidTo\": \"Meghna Oil Depot\",\n  \"paymentMethod\": \"CASH\",\n  \"notes\": \"Monthly refuel\",\n  \"buildingId\": \"{{buildingId}}\"\n}"
+            },
+            "description": "Allowed: OWNER, MANAGER. Optionally link to a building or unit."
+          }
+        },
+        {
+          "name": "Get All Expenses",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/expenses",
+              "host": ["{{baseUrl}}"],
+              "path": ["expenses"],
+              "query": [
+                { "key": "buildingId", "value": "{{buildingId}}", "disabled": true },
+                { "key": "category", "value": "ELECTRICITY", "disabled": true },
+                { "key": "from", "value": "2026-06-01T00:00:00.000Z", "disabled": true },
+                { "key": "to", "value": "2026-06-30T23:59:59.000Z", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Expense By Id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/expenses/{{expenseId}}", "host": ["{{baseUrl}}"], "path": ["expenses", "{{expenseId}}"] }
+          }
+        },
+        {
+          "name": "Update Expense",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/expenses/{{expenseId}}", "host": ["{{baseUrl}}"], "path": ["expenses", "{{expenseId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 5000,\n  \"notes\": \"Updated amount after receipt\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Expense",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/expenses/{{expenseId}}", "host": ["{{baseUrl}}"], "path": ["expenses", "{{expenseId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Complaints",
+      "item": [
+        {
+          "name": "Create Complaint",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/complaints", "host": ["{{baseUrl}}"], "path": ["complaints"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Water leakage in bathroom\",\n  \"description\": \"The ceiling is leaking whenever it rains. Started 3 days ago.\",\n  \"category\": \"PLUMBING\",\n  \"priority\": \"HIGH\",\n  \"buildingId\": \"{{buildingId}}\",\n  \"unitId\": \"{{unitId}}\"\n}"
+            },
+            "description": "Allowed: OWNER, MANAGER, CARETAKER, TENANT."
+          }
+        },
+        {
+          "name": "Get All Complaints",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/complaints",
+              "host": ["{{baseUrl}}"],
+              "path": ["complaints"],
+              "query": [
+                { "key": "status", "value": "OPEN", "disabled": true },
+                { "key": "priority", "value": "HIGH", "disabled": true },
+                { "key": "buildingId", "value": "{{buildingId}}", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Complaint By Id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/complaints/{{complaintId}}", "host": ["{{baseUrl}}"], "path": ["complaints", "{{complaintId}}"] }
+          }
+        },
+        {
+          "name": "Update Complaint Status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/complaints/{{complaintId}}", "host": ["{{baseUrl}}"], "path": ["complaints", "{{complaintId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"IN_PROGRESS\",\n  \"resolutionNote\": \"Plumber dispatched, will be fixed by tomorrow.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Assign Complaint",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/complaints/{{complaintId}}/assign", "host": ["{{baseUrl}}"], "path": ["complaints", "{{complaintId}}", "assign"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assignedToId\": \"{{userId}}\"\n}"
+            },
+            "description": "Allowed: OWNER, MANAGER. Assigns complaint to a staff member and sets status to ASSIGNED."
+          }
+        },
+        {
+          "name": "Delete Complaint",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/complaints/{{complaintId}}", "host": ["{{baseUrl}}"], "path": ["complaints", "{{complaintId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Documents",
+      "item": [
+        {
+          "name": "Upload Document",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/documents", "host": ["{{baseUrl}}"], "path": ["documents"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "" },
+                { "key": "name", "value": "Rahim NID Copy", "type": "text" },
+                { "key": "type", "value": "NID", "type": "text" },
+                { "key": "tenantId", "value": "{{tenantId}}", "type": "text" }
+              ]
+            },
+            "description": "Multipart/form-data upload. File goes to Cloudinary. `type` is optional (NID, PASSPORT, AGREEMENT_PDF, TRADE_LICENSE, PHOTO, RECEIPT, OTHER)."
+          }
+        },
+        {
+          "name": "Get All Documents",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/documents",
+              "host": ["{{baseUrl}}"],
+              "path": ["documents"],
+              "query": [
+                { "key": "type", "value": "NID", "disabled": true },
+                { "key": "tenantId", "value": "{{tenantId}}", "disabled": true },
+                { "key": "buildingId", "value": "{{buildingId}}", "disabled": true },
+                { "key": "leaseId", "value": "{{leaseId}}", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Document By Id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/documents/{{documentId}}", "host": ["{{baseUrl}}"], "path": ["documents", "{{documentId}}"] }
+          }
+        },
+        {
+          "name": "Delete Document",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/documents/{{documentId}}", "host": ["{{baseUrl}}"], "path": ["documents", "{{documentId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Rent Agreements",
+      "item": [
+        {
+          "name": "Get Agreement By Lease",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/rent-agreements/{{leaseId}}", "host": ["{{baseUrl}}"], "path": ["rent-agreements", "{{leaseId}}"] }
+          }
+        },
+        {
+          "name": "Create Agreement",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/rent-agreements/{{leaseId}}", "host": ["{{baseUrl}}"], "path": ["rent-agreements", "{{leaseId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"This agreement is between the owner and tenant for unit 3A...\",\n  \"validFrom\": \"2026-06-01T00:00:00.000Z\",\n  \"validUntil\": \"2027-05-31T00:00:00.000Z\"\n}"
+            },
+            "description": "Creates a DRAFT agreement for the lease. One agreement per lease."
+          }
+        },
+        {
+          "name": "Sign Agreement",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/rent-agreements/{{leaseId}}/sign", "host": ["{{baseUrl}}"], "path": ["rent-agreements", "{{leaseId}}", "sign"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"owner\",\n  \"signatureUrl\": \"https://example.com/owner-sig.png\"\n}"
+            },
+            "description": "Sign as 'owner' or 'tenant'. Status becomes SIGNED once both have signed."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Rent Increases",
+      "item": [
+        {
+          "name": "Create Rent Increase",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/rent-increases/{{leaseId}}", "host": ["{{baseUrl}}"], "path": ["rent-increases", "{{leaseId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newRent\": 20000,\n  \"effectiveFrom\": \"2027-01-01T00:00:00.000Z\",\n  \"reason\": \"Annual rent revision per agreement clause 5\"\n}"
+            },
+            "description": "Allowed: OWNER, MANAGER. Records increase and updates lease monthlyRent. New rent must be greater than current."
+          }
+        },
+        {
+          "name": "Get Rent Increases By Lease",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/rent-increases/{{leaseId}}", "host": ["{{baseUrl}}"], "path": ["rent-increases", "{{leaseId}}"] },
+            "description": "Returns full rent increase history for the lease, newest first."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Get Summary (KPIs)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/dashboard/summary", "host": ["{{baseUrl}}"], "path": ["dashboard", "summary"] },
+            "description": "Allowed: OWNER, MANAGER. Returns buildings, units (occupied/vacant), tenants, leases, monthly revenue, due/overdue invoices, open complaints."
+          }
+        },
+        {
+          "name": "Get Occupancy",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/dashboard/occupancy", "host": ["{{baseUrl}}"], "path": ["dashboard", "occupancy"] },
+            "description": "Returns per-building occupancy rate and unit breakdown."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Financial Report (Income vs Expense)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/reports/financial",
+              "host": ["{{baseUrl}}"],
+              "path": ["reports", "financial"],
+              "query": [
+                { "key": "from", "value": "2026-01-01T00:00:00.000Z", "disabled": true },
+                { "key": "to", "value": "2026-12-31T23:59:59.000Z", "disabled": true }
+              ]
+            },
+            "description": "Monthly income vs expense breakdown. Defaults to current year."
+          }
+        },
+        {
+          "name": "Rent Collection Report",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/reports/rent-collection",
+              "host": ["{{baseUrl}}"],
+              "path": ["reports", "rent-collection"],
+              "query": [
+                { "key": "from", "value": "2026-01-01T00:00:00.000Z", "disabled": true },
+                { "key": "to", "value": "2026-12-31T23:59:59.000Z", "disabled": true },
+                { "key": "buildingId", "value": "{{buildingId}}", "disabled": true }
+              ]
+            },
+            "description": "Per-tenant billed, paid, and due breakdown."
+          }
+        },
+        {
+          "name": "Occupancy Report",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/reports/occupancy", "host": ["{{baseUrl}}"], "path": ["reports", "occupancy"] },
+            "description": "Building-wise occupancy breakdown with per-unit status."
+          }
+        },
+        {
+          "name": "Expense Report (Category Breakdown)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/reports/expenses",
+              "host": ["{{baseUrl}}"],
+              "path": ["reports", "expenses"],
+              "query": [
+                { "key": "from", "value": "2026-01-01T00:00:00.000Z", "disabled": true },
+                { "key": "to", "value": "2026-12-31T23:59:59.000Z", "disabled": true },
+                { "key": "buildingId", "value": "{{buildingId}}", "disabled": true }
+              ]
+            },
+            "description": "Expense breakdown by category with percentages."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Get My Notifications",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications"],
+              "query": [
+                { "key": "status", "value": "PENDING", "disabled": true },
+                { "key": "limit", "value": "20", "disabled": true }
+              ]
+            },
+            "description": "Returns notifications for the logged-in user. Default limit: 50."
+          }
+        },
+        {
+          "name": "Mark Notification As Read",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/notifications/{{notificationId}}/read", "host": ["{{baseUrl}}"], "path": ["notifications", "{{notificationId}}", "read"] }
+          }
+        },
+        {
+          "name": "Mark All Notifications As Read",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/notifications/read-all", "host": ["{{baseUrl}}"], "path": ["notifications", "read-all"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Activity Logs",
+      "item": [
+        {
+          "name": "Get Activity Logs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/activity-logs",
+              "host": ["{{baseUrl}}"],
+              "path": ["activity-logs"],
+              "query": [
+                { "key": "userId", "value": "{{userId}}", "disabled": true },
+                { "key": "entityType", "value": "Payment", "disabled": true },
+                { "key": "action", "value": "PAYMENT_CREATED", "disabled": true },
+                { "key": "from", "value": "2026-01-01T00:00:00.000Z", "disabled": true },
+                { "key": "to", "value": "2026-12-31T23:59:59.000Z", "disabled": true },
+                { "key": "limit", "value": "50", "disabled": true }
+              ]
+            },
+            "description": "Allowed: OWNER, MANAGER. Audit trail of all logged actions."
           }
         }
       ]
