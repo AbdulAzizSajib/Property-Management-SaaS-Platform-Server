@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { Role } from "../../../generated/prisma/enums";
 import { checkAuth } from "../../middleware/checkAuth";
+import { checkPlanLimit } from "../../middleware/checkPlanLimit";
 import { requireActiveOrg } from "../../middleware/requireActiveOrg";
 import { validateRequest } from "../../middleware/validateRequest";
 import { FloorController } from "./floor.controller";
@@ -15,6 +16,7 @@ router.post(
     "/",
     checkAuth(Role.OWNER, Role.MANAGER),
     requireActiveOrg,
+    checkPlanLimit("floor"),
     validateRequest(createFloorZodSchema),
     FloorController.createFloor,
 );

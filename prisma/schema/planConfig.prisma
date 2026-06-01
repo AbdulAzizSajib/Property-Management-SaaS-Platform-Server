@@ -1,0 +1,20 @@
+model PlanConfig {
+    id             String           @id @default(cuid())
+    plan           SubscriptionPlan @unique
+    displayName    String
+    description    String
+    buildingLimit  Int
+    floorLimit     Int
+    unitLimit      Int
+    tenantLimit    Int
+    smsEnabled     Boolean          @default(false)
+    customBranding Boolean          @default(false)
+    multiAdmin     Boolean          @default(false)
+    priceMonthly   Decimal          @db.Decimal(10, 2)
+    trialDays      Int?
+    isPopular      Boolean          @default(false)
+    features       String[]
+    isActive       Boolean          @default(true)
+    createdAt      DateTime         @default(now())
+    updatedAt      DateTime         @updatedAt
+}

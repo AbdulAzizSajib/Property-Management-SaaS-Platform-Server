@@ -5,7 +5,7 @@ import { Role } from "../../generated/prisma/enums";
 import AppError from "../errorHelpers/AppError";
 import { prisma } from "../lib/prisma";
 
-type ResourceType = "building" | "unit" | "tenant";
+type ResourceType = "building" | "floor" | "unit" | "tenant";
 
 export const checkPlanLimit =
     (resource: ResourceType) =>
@@ -48,6 +48,12 @@ export const checkPlanLimit =
                 });
                 limit = subscription.buildingLimit;
                 label = "buildings";
+            } else if (resource === "floor") {
+                currentCount = await prisma.floor.count({
+                    where: { building: { organizationId: orgId } },
+                });
+                limit = subscription.floorLimit;
+                label = "floors";
             } else if (resource === "unit") {
                 currentCount = await prisma.unit.count({
                     where: { building: { organizationId: orgId } },

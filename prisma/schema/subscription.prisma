@@ -3,6 +3,7 @@ model Subscription {
     plan           SubscriptionPlan   @default(FREE_TRIAL)
     status         SubscriptionStatus @default(TRIALING)
     buildingLimit  Int                @default(1)
+    floorLimit     Int                @default(2)
     unitLimit      Int                @default(10)
     tenantLimit    Int                @default(10)
     smsEnabled     Boolean            @default(false)

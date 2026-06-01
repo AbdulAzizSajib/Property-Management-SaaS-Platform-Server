@@ -9,7 +9,7 @@ import { sendResponse } from "../../shared/sendResponse";
 import { SubscriptionService } from "./subscription.service";
 
 const getAllPlans = catchAsync(async (_req: Request, res: Response) => {
-    const result = SubscriptionService.getAllPlans();
+    const result = await SubscriptionService.getAllPlans();
 
     sendResponse(res, {
         httpStatusCode: status.OK,

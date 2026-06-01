@@ -7,11 +7,33 @@ import {
 import AppError from "../../errorHelpers/AppError";
 import { IRequestUser } from "../../interfaces/requestUser.interface";
 import { prisma } from "../../lib/prisma";
-import { PLAN_PRESETS } from "./subscription.constants";
 import { IChangePlanPayload } from "./subscription.interface";
 
-const buildSubscriptionData = (plan: SubscriptionPlan) => {
-    const preset = PLAN_PRESETS[plan];
+const getPlanConfig = async (
+    plan: SubscriptionPlan,
+    client: Prisma.TransactionClient | typeof prisma = prisma,
+) => {
+    const config = await client.planConfig.findUnique({ where: { plan } });
+    if (!config) {
+        throw new AppError(
+            status.NOT_FOUND,
+            `Plan configuration for ${plan} not found. Run seed to initialize.`,
+        );
+    }
+    if (!config.isActive) {
+        throw new AppError(
+            status.BAD_REQUEST,
+            `Plan ${plan} is currently disabled`,
+        );
+    }
+    return config;
+};
+
+const buildSubscriptionData = async (
+    plan: SubscriptionPlan,
+    client: Prisma.TransactionClient | typeof prisma = prisma,
+) => {
+    const preset = await getPlanConfig(plan, client);
     const now = new Date();
     const isTrial = plan === SubscriptionPlan.FREE_TRIAL;
 
@@ -21,12 +43,13 @@ const buildSubscriptionData = (plan: SubscriptionPlan) => {
             ? SubscriptionStatus.TRIALING
             : SubscriptionStatus.ACTIVE,
         buildingLimit: preset.buildingLimit,
+        floorLimit: preset.floorLimit,
         unitLimit: preset.unitLimit,
         tenantLimit: preset.tenantLimit,
         smsEnabled: preset.smsEnabled,
         customBranding: preset.customBranding,
         multiAdmin: preset.multiAdmin,
-        priceMonthly: new Prisma.Decimal(preset.priceMonthly),
+        priceMonthly: preset.priceMonthly,
         trialEndsAt:
             isTrial && preset.trialDays
                 ? new Date(now.getTime() + preset.trialDays * 24 * 60 * 60 * 1000)
@@ -41,31 +64,36 @@ const createTrialSubscriptionForOrg = async (
     organizationId: string,
     tx: Prisma.TransactionClient,
 ) => {
+    const data = await buildSubscriptionData(SubscriptionPlan.FREE_TRIAL, tx);
     return tx.subscription.create({
         data: {
-            ...buildSubscriptionData(SubscriptionPlan.FREE_TRIAL),
+            ...data,
             organizationId,
         },
     });
 };
 
-const getAllPlans = () => {
-    return Object.entries(PLAN_PRESETS)
-        .filter(([key]) => key !== SubscriptionPlan.FREE_TRIAL)
-        .map(([key, preset]) => ({
-            plan: key as SubscriptionPlan,
-            displayName: preset.displayName,
-            description: preset.description,
-            priceMonthly: preset.priceMonthly,
-            buildingLimit: preset.buildingLimit,
-            unitLimit: preset.unitLimit,
-            tenantLimit: preset.tenantLimit,
-            smsEnabled: preset.smsEnabled,
-            customBranding: preset.customBranding,
-            multiAdmin: preset.multiAdmin,
-            isPopular: preset.isPopular ?? false,
-            features: preset.features,
-        }));
+const getAllPlans = async () => {
+    const configs = await prisma.planConfig.findMany({
+        where: { isActive: true },
+        orderBy: { priceMonthly: "asc" },
+    });
+
+    return configs.map((preset) => ({
+        plan: preset.plan,
+        displayName: preset.displayName,
+        description: preset.description,
+        priceMonthly: preset.priceMonthly,
+        buildingLimit: preset.buildingLimit,
+        floorLimit: preset.floorLimit,
+        unitLimit: preset.unitLimit,
+        tenantLimit: preset.tenantLimit,
+        smsEnabled: preset.smsEnabled,
+        customBranding: preset.customBranding,
+        multiAdmin: preset.multiAdmin,
+        isPopular: preset.isPopular,
+        features: preset.features,
+    }));
 };
 
 const getMySubscription = async (user: IRequestUser) => {
@@ -115,10 +143,12 @@ const changePlan = async (user: IRequestUser, payload: IChangePlanPayload) => {
         throw new AppError(status.BAD_REQUEST, `Already on ${payload.plan} plan`);
     }
 
-    // Limit downgrade check — don't allow downgrading if current usage exceeds the new plan's limits
-    const targetPreset = PLAN_PRESETS[payload.plan];
-    const [buildingCount, unitCount, tenantCount] = await Promise.all([
+    const targetPreset = await getPlanConfig(payload.plan);
+    const [buildingCount, floorCount, unitCount, tenantCount] = await Promise.all([
         prisma.building.count({ where: { organizationId: user.organizationId } }),
+        prisma.floor.count({
+            where: { building: { organizationId: user.organizationId } },
+        }),
         prisma.unit.count({
             where: { building: { organizationId: user.organizationId } },
         }),
@@ -129,6 +159,12 @@ const changePlan = async (user: IRequestUser, payload: IChangePlanPayload) => {
         throw new AppError(
             status.BAD_REQUEST,
             `Cannot downgrade: you have ${buildingCount} buildings but the ${targetPreset.displayName} plan allows ${targetPreset.buildingLimit}`,
+        );
+    }
+    if (floorCount > targetPreset.floorLimit) {
+        throw new AppError(
+            status.BAD_REQUEST,
+            `Cannot downgrade: you have ${floorCount} floors but the ${targetPreset.displayName} plan allows ${targetPreset.floorLimit}`,
         );
     }
     if (unitCount > targetPreset.unitLimit) {
@@ -144,9 +180,10 @@ const changePlan = async (user: IRequestUser, payload: IChangePlanPayload) => {
         );
     }
 
+    const data = await buildSubscriptionData(payload.plan);
     return prisma.subscription.update({
         where: { organizationId: user.organizationId },
-        data: buildSubscriptionData(payload.plan),
+        data,
     });
 };
 
@@ -251,7 +288,7 @@ const adminUpdateSubscription = async (
     const data: Prisma.SubscriptionUpdateInput = {};
 
     if (payload.plan) {
-        Object.assign(data, buildSubscriptionData(payload.plan));
+        Object.assign(data, await buildSubscriptionData(payload.plan));
     }
     if (payload.status !== undefined) data.status = payload.status;
     if (payload.endDate !== undefined) data.endDate = payload.endDate;
