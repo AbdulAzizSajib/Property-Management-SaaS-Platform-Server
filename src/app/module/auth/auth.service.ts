@@ -79,7 +79,7 @@ const registerOwner = async (payload: IRegisterOwnerPayload) => {
                 },
             });
 
-            await SubscriptionService.createTrialSubscriptionForOrg(
+            await SubscriptionService.createDefaultSubscriptionForOrg(
                 createdOrg.id,
                 tx,
             );

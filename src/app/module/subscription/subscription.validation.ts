@@ -7,18 +7,19 @@ import {
 export const changePlanZodSchema = z.object({
     plan: z.enum(
         [
+            SubscriptionPlan.FREE,
             SubscriptionPlan.BASIC,
             SubscriptionPlan.STANDARD,
             SubscriptionPlan.ENTERPRISE,
         ],
-        "Plan must be one of BASIC, STANDARD, ENTERPRISE",
+        "Plan must be one of FREE_TRIAL, BASIC, STANDARD, ENTERPRISE",
     ),
 });
 
 export const adminUpdateSubscriptionZodSchema = z.object({
     plan: z
         .enum([
-            SubscriptionPlan.FREE_TRIAL,
+            SubscriptionPlan.FREE,
             SubscriptionPlan.BASIC,
             SubscriptionPlan.STANDARD,
             SubscriptionPlan.ENTERPRISE,

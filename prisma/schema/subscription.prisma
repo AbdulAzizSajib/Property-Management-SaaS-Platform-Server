@@ -1,7 +1,7 @@
 model Subscription {
     id             String             @id @default(cuid())
-    plan           SubscriptionPlan   @default(FREE_TRIAL)
-    status         SubscriptionStatus @default(TRIALING)
+    plan           SubscriptionPlan   @default(FREE)
+    status         SubscriptionStatus @default(ACTIVE)
     buildingLimit  Int                @default(1)
     floorLimit     Int                @default(2)
     unitLimit      Int                @default(10)

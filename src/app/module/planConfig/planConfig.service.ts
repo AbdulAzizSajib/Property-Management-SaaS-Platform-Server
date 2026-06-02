@@ -71,10 +71,10 @@ const deletePlanConfig = async (id: string) => {
         throw new AppError(status.NOT_FOUND, "Plan config not found");
     }
 
-    if (existing.plan === SubscriptionPlan.FREE_TRIAL) {
+    if (existing.plan === SubscriptionPlan.FREE) {
         throw new AppError(
             status.BAD_REQUEST,
-            "FREE_TRIAL plan cannot be deleted; disable it via isActive instead",
+            "FREE plan cannot be deleted; disable it via isActive instead",
         );
     }
 

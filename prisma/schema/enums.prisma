@@ -142,7 +142,7 @@ enum NotificationStatus {
 }
 
 enum SubscriptionPlan {
-  FREE_TRIAL
+  FREE
   BASIC
   STANDARD
   ENTERPRISE

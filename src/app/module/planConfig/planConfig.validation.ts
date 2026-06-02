@@ -2,7 +2,7 @@ import z from "zod";
 import { SubscriptionPlan } from "../../../generated/prisma/enums";
 
 const planEnum = z.enum([
-    SubscriptionPlan.FREE_TRIAL,
+    SubscriptionPlan.FREE,
     SubscriptionPlan.BASIC,
     SubscriptionPlan.STANDARD,
     SubscriptionPlan.ENTERPRISE,

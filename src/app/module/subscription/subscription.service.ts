@@ -35,11 +35,12 @@ const buildSubscriptionData = async (
 ) => {
     const preset = await getPlanConfig(plan, client);
     const now = new Date();
-    const isTrial = plan === SubscriptionPlan.FREE_TRIAL;
+    const isFreePlan = plan === SubscriptionPlan.FREE;
+    const hasTrial = !isFreePlan && Boolean(preset.trialDays);
 
     return {
         plan,
-        status: isTrial
+        status: hasTrial
             ? SubscriptionStatus.TRIALING
             : SubscriptionStatus.ACTIVE,
         buildingLimit: preset.buildingLimit,
@@ -51,20 +52,20 @@ const buildSubscriptionData = async (
         multiAdmin: preset.multiAdmin,
         priceMonthly: preset.priceMonthly,
         trialEndsAt:
-            isTrial && preset.trialDays
+            hasTrial && preset.trialDays
                 ? new Date(now.getTime() + preset.trialDays * 24 * 60 * 60 * 1000)
                 : null,
         startDate: now,
         endDate: null,
-        autoRenew: !isTrial,
+        autoRenew: !isFreePlan,
     };
 };
 
-const createTrialSubscriptionForOrg = async (
+const createDefaultSubscriptionForOrg = async (
     organizationId: string,
     tx: Prisma.TransactionClient,
 ) => {
-    const data = await buildSubscriptionData(SubscriptionPlan.FREE_TRIAL, tx);
+    const data = await buildSubscriptionData(SubscriptionPlan.FREE, tx);
     return tx.subscription.create({
         data: {
             ...data,
@@ -121,13 +122,6 @@ const changePlan = async (user: IRequestUser, payload: IChangePlanPayload) => {
         throw new AppError(
             status.BAD_REQUEST,
             "User is not associated with any organization",
-        );
-    }
-
-    if (payload.plan === SubscriptionPlan.FREE_TRIAL) {
-        throw new AppError(
-            status.BAD_REQUEST,
-            "Cannot switch back to free trial",
         );
     }
 
@@ -301,7 +295,7 @@ const adminUpdateSubscription = async (
 };
 
 export const SubscriptionService = {
-    createTrialSubscriptionForOrg,
+    createDefaultSubscriptionForOrg,
     getAllPlans,
     getMySubscription,
     changePlan,
