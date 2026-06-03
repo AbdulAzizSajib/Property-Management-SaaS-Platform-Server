@@ -361,7 +361,7 @@
               "mode": "raw",
               "raw": "{\n  \"plan\": \"STANDARD\"\n}"
             },
-            "description": "Allowed: OWNER only. Plan must be one of BASIC, STANDARD, ENTERPRISE."
+            "description": "Allowed: OWNER only. Plan must be one of FREE, BASIC, STANDARD, BUSINESS."
           }
         },
         {
@@ -396,7 +396,7 @@
             "url": { "raw": "{{baseUrl}}/subscriptions/{{organizationId}}", "host": ["{{baseUrl}}"], "path": ["subscriptions", "{{organizationId}}"] },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"plan\": \"ENTERPRISE\",\n  \"status\": \"ACTIVE\"\n}"
+              "raw": "{\n  \"plan\": \"BUSINESS\",\n  \"status\": \"ACTIVE\"\n}"
             },
             "description": "Allowed: SUPER_ADMIN only. Manually override a subscription for any organization."
           }
@@ -526,16 +526,42 @@
       "name": "Units",
       "item": [
         {
-          "name": "Create Unit",
+          "name": "Create Unit (Flat - Bangladesh layout)",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "url": { "raw": "{{baseUrl}}/units", "host": ["{{baseUrl}}"], "path": ["units"] },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"buildingId\": \"{{buildingId}}\",\n  \"floorId\": \"{{floorId}}\",\n  \"name\": \"3A\",\n  \"type\": \"FLAT\",\n  \"bedrooms\": 3,\n  \"bathrooms\": 2,\n  \"sizeSqft\": 1200,\n  \"baseRent\": 18000,\n  \"serviceCharge\": 1500\n}"
+              "raw": "{\n  \"buildingId\": \"{{buildingId}}\",\n  \"floorId\": \"{{floorId}}\",\n  \"name\": \"3A\",\n  \"type\": \"FLAT\",\n  \"bedrooms\": 3,\n  \"bathrooms\": 2,\n  \"drawingRooms\": 1,\n  \"diningRooms\": 1,\n  \"kitchens\": 1,\n  \"balconies\": 2,\n  \"sizeSqft\": 1200,\n  \"baseRent\": 18000\n}"
             },
-            "description": "Subscription unit limit is enforced."
+            "description": "Allowed: OWNER, MANAGER. Subscription unit limit is enforced.\n\nAll room counts (bedrooms, bathrooms, drawingRooms, diningRooms, kitchens, balconies) are optional and 0-20. Set to null/skip for non-residential units.\n\nserviceCharge is optional — if not provided, unit has no fixed service charge."
+          }
+        },
+        {
+          "name": "Create Unit (Shop)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/units", "host": ["{{baseUrl}}"], "path": ["units"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"buildingId\": \"{{buildingId}}\",\n  \"name\": \"Shop 5\",\n  \"type\": \"SHOP\",\n  \"sizeSqft\": 200,\n  \"baseRent\": 15000\n}"
+            },
+            "description": "Shop/garage/warehouse units don't need bedroom counts. Skip room fields entirely."
+          }
+        },
+        {
+          "name": "Create Unit (Hostel Room)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/units", "host": ["{{baseUrl}}"], "path": ["units"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"buildingId\": \"{{buildingId}}\",\n  \"name\": \"Room 12\",\n  \"type\": \"ROOM\",\n  \"bathrooms\": 1,\n  \"baseRent\": 5000\n}"
+            },
+            "description": "Minimal hostel/mess room — usually shared bathroom only."
           }
         },
         {
@@ -570,8 +596,9 @@
             "url": { "raw": "{{baseUrl}}/units/{{unitId}}", "host": ["{{baseUrl}}"], "path": ["units", "{{unitId}}"] },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"baseRent\": 19000,\n  \"status\": \"UNDER_MAINTENANCE\"\n}"
-            }
+              "raw": "{\n  \"baseRent\": 19000,\n  \"serviceCharge\": 1500,\n  \"bedrooms\": 3,\n  \"bathrooms\": 2,\n  \"balconies\": 2,\n  \"status\": \"UNDER_MAINTENANCE\"\n}"
+            },
+            "description": "All fields optional. Any combination can be updated."
           }
         },
         {
@@ -638,16 +665,59 @@
       "name": "Leases",
       "item": [
         {
-          "name": "Create Lease",
+          "name": "Create Lease (Inclusive — all bills bundled)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  const leaseId = json?.data?.id;",
+                  "  if (leaseId) pm.collectionVariables.set('leaseId', leaseId);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "url": { "raw": "{{baseUrl}}/leases", "host": ["{{baseUrl}}"], "path": ["leases"] },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"unitId\": \"{{unitId}}\",\n  \"startDate\": \"2026-06-01\",\n  \"endDate\": \"2027-05-31\",\n  \"moveInDate\": \"2026-06-01\",\n  \"monthlyRent\": 18000,\n  \"serviceCharge\": 1500,\n  \"securityDeposit\": 36000,\n  \"rentDueDay\": 5\n}"
+              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"unitId\": \"{{unitId}}\",\n  \"startDate\": \"2026-06-01\",\n  \"endDate\": \"2027-05-31\",\n  \"moveInDate\": \"2026-06-01\",\n  \"monthlyRent\": 30000,\n  \"serviceCharge\": 0,\n  \"securityDeposit\": 60000,\n  \"rentDueDay\": 5,\n  \"billingMode\": \"INCLUSIVE\"\n}"
             },
-            "description": "Creates lease, marks unit OCCUPIED, and auto-generates first month invoice."
+            "description": "Type 1: Bhara 30k all-included (gas, water, electricity bundled in monthlyRent).\n\nbillingMode defaults to INCLUSIVE — utility fields not needed.\n\nCreates lease, marks unit OCCUPIED, auto-generates first month invoice with 1 line item (\"Monthly Rent\")."
+          }
+        },
+        {
+          "name": "Create Lease (Fixed Separate — utility breakdown)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  const leaseId = json?.data?.id;",
+                  "  if (leaseId) pm.collectionVariables.set('leaseId', leaseId);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/leases", "host": ["{{baseUrl}}"], "path": ["leases"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"unitId\": \"{{unitId}}\",\n  \"startDate\": \"2026-06-01\",\n  \"endDate\": \"2027-05-31\",\n  \"moveInDate\": \"2026-06-01\",\n  \"monthlyRent\": 24000,\n  \"serviceCharge\": 1500,\n  \"securityDeposit\": 48000,\n  \"rentDueDay\": 5,\n  \"billingMode\": \"FIXED_SEPARATE\",\n  \"gasCharge\": 2000,\n  \"waterCharge\": 1500,\n  \"electricityCharge\": 2500,\n  \"internetCharge\": 1000\n}"
+            },
+            "description": "Type 2: Bhara 24k + utilities billed separately. Total = 24000 + 1500 + 2000 + 1500 + 2500 + 1000 = 32500.\n\nFIXED_SEPARATE requires at least one utility charge.\n\nFirst invoice will have line items: Rent, Service Charge, Gas, Water, Electricity, Internet."
           }
         },
         {
@@ -683,15 +753,42 @@
       "name": "Invoices",
       "item": [
         {
-          "name": "Generate Single Invoice",
+          "name": "Generate Single Invoice (uses lease defaults)",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "url": { "raw": "{{baseUrl}}/invoices/generate", "host": ["{{baseUrl}}"], "path": ["invoices", "generate"] },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"leaseId\": \"{{leaseId}}\",\n  \"billingMonth\": \"2026-07-01\",\n  \"utilityAmount\": 800,\n  \"penaltyAmount\": 0\n}"
-            }
+              "raw": "{\n  \"leaseId\": \"{{leaseId}}\",\n  \"billingMonth\": \"2026-07-01\"\n}"
+            },
+            "description": "Generates invoice using the lease's billingMode + fixed utility charges. No body fields needed beyond leaseId & billingMonth.\n\nFor INCLUSIVE leases: just rent.\nFor FIXED_SEPARATE leases: rent + service charge + all configured utilities."
+          }
+        },
+        {
+          "name": "Generate Single Invoice (override utilities)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/invoices/generate", "host": ["{{baseUrl}}"], "path": ["invoices", "generate"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"leaseId\": \"{{leaseId}}\",\n  \"billingMonth\": \"2026-08-01\",\n  \"utilities\": {\n    \"electricity\": 3500\n  },\n  \"penaltyAmount\": 200,\n  \"notes\": \"Higher electricity due to summer AC usage; ৳200 late fee\"\n}"
+            },
+            "description": "Override specific utilities for this invoice only (e.g., electricity higher in summer). Other utilities still use lease defaults.\n\nOnly works for FIXED_SEPARATE leases. Override fields are optional individually."
+          }
+        },
+        {
+          "name": "Generate Single Invoice (legacy utilityAmount)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/invoices/generate", "host": ["{{baseUrl}}"], "path": ["invoices", "generate"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"leaseId\": \"{{leaseId}}\",\n  \"billingMonth\": \"2026-09-01\",\n  \"utilityAmount\": 5000,\n  \"notes\": \"One-off utility bill — meter-based\"\n}"
+            },
+            "description": "Single bundled utility amount (when you don't want to break down). Useful for INCLUSIVE leases with one-off variable bills.\n\nAdded as one OTHER line item: \"Utilities\"."
           }
         },
         {

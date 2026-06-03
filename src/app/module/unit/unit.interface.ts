@@ -7,6 +7,10 @@ export interface ICreateUnitPayload {
     type?: UnitType;
     bedrooms?: number;
     bathrooms?: number;
+    drawingRooms?: number;
+    diningRooms?: number;
+    kitchens?: number;
+    balconies?: number;
     sizeSqft?: number;
     baseRent: number;
     serviceCharge?: number;
@@ -20,6 +24,10 @@ export interface IUpdateUnitPayload {
     status?: UnitStatus;
     bedrooms?: number;
     bathrooms?: number;
+    drawingRooms?: number;
+    diningRooms?: number;
+    kitchens?: number;
+    balconies?: number;
     sizeSqft?: number;
     baseRent?: number;
     serviceCharge?: number;

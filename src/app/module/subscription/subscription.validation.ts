@@ -10,9 +10,9 @@ export const changePlanZodSchema = z.object({
             SubscriptionPlan.FREE,
             SubscriptionPlan.BASIC,
             SubscriptionPlan.STANDARD,
-            SubscriptionPlan.ENTERPRISE,
+            SubscriptionPlan.BUSINESS,
         ],
-        "Plan must be one of FREE_TRIAL, BASIC, STANDARD, ENTERPRISE",
+        "Plan must be one of FREE, BASIC, STANDARD, BUSINESS",
     ),
 });
 
@@ -22,7 +22,7 @@ export const adminUpdateSubscriptionZodSchema = z.object({
             SubscriptionPlan.FREE,
             SubscriptionPlan.BASIC,
             SubscriptionPlan.STANDARD,
-            SubscriptionPlan.ENTERPRISE,
+            SubscriptionPlan.BUSINESS,
         ])
         .optional(),
     status: z

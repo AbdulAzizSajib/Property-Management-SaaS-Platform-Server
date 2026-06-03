@@ -1,8 +1,10 @@
 import status from "http-status";
 import { Prisma } from "../../../generated/prisma/client";
 import {
+    BillingMode,
     InvoiceType,
     LeaseStatus,
+    LineItemCategory,
     PaymentStatus,
 } from "../../../generated/prisma/enums";
 import AppError from "../../errorHelpers/AppError";
@@ -28,6 +30,80 @@ const generateInvoiceNumber = (organizationId: string) => {
 };
 
 const monthStart = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1);
+
+type LeaseForInvoice = {
+    id: string;
+    organizationId: string;
+    unitId: string;
+    tenantId: string;
+    monthlyRent: Prisma.Decimal;
+    serviceCharge: Prisma.Decimal;
+    rentDueDay: number;
+    billingMode: BillingMode;
+    gasCharge: Prisma.Decimal | null;
+    waterCharge: Prisma.Decimal | null;
+    electricityCharge: Prisma.Decimal | null;
+    internetCharge: Prisma.Decimal | null;
+};
+
+type LineItemInput = {
+    category: LineItemCategory;
+    description: string;
+    amount: Prisma.Decimal;
+};
+
+const buildUtilityLineItems = (
+    lease: LeaseForInvoice,
+    override?: {
+        gas?: number;
+        water?: number;
+        electricity?: number;
+        internet?: number;
+    },
+): LineItemInput[] => {
+    if (lease.billingMode !== BillingMode.FIXED_SEPARATE) return [];
+
+    const pick = (
+        manual: number | undefined,
+        fixed: Prisma.Decimal | null,
+    ): Prisma.Decimal | null => {
+        if (manual !== undefined) return new Prisma.Decimal(manual);
+        return fixed;
+    };
+
+    const items: LineItemInput[] = [];
+    const gas = pick(override?.gas, lease.gasCharge);
+    const water = pick(override?.water, lease.waterCharge);
+    const electricity = pick(override?.electricity, lease.electricityCharge);
+    const internet = pick(override?.internet, lease.internetCharge);
+
+    if (gas && gas.gt(0))
+        items.push({
+            category: LineItemCategory.GAS,
+            description: "Gas",
+            amount: gas,
+        });
+    if (water && water.gt(0))
+        items.push({
+            category: LineItemCategory.WATER,
+            description: "Water",
+            amount: water,
+        });
+    if (electricity && electricity.gt(0))
+        items.push({
+            category: LineItemCategory.ELECTRICITY,
+            description: "Electricity",
+            amount: electricity,
+        });
+    if (internet && internet.gt(0))
+        items.push({
+            category: LineItemCategory.INTERNET,
+            description: "Internet",
+            amount: internet,
+        });
+
+    return items;
+};
 
 const generateOne = async (
     user: IRequestUser,
@@ -64,8 +140,19 @@ const generateOne = async (
 
     const rent = new Prisma.Decimal(lease.monthlyRent);
     const serviceCharge = new Prisma.Decimal(lease.serviceCharge);
-    const utility = new Prisma.Decimal(payload.utilityAmount ?? 0);
     const penalty = new Prisma.Decimal(payload.penaltyAmount ?? 0);
+
+    const utilities = buildUtilityLineItems(lease, payload.utilities);
+    // If caller passes a raw utilityAmount (legacy / metered), treat it as a single OTHER line
+    const legacyUtility =
+        payload.utilityAmount !== undefined && utilities.length === 0
+            ? new Prisma.Decimal(payload.utilityAmount)
+            : new Prisma.Decimal(0);
+    const utilityFromItems = utilities.reduce(
+        (sum, item) => sum.add(item.amount),
+        new Prisma.Decimal(0),
+    );
+    const utility = utilityFromItems.add(legacyUtility);
     const total = rent.add(serviceCharge).add(utility).add(penalty);
 
     const dueDate = payload.dueDate
@@ -75,6 +162,42 @@ const generateOne = async (
               billingMonth.getMonth(),
               lease.rentDueDay,
           );
+
+    const lineItems: LineItemInput[] = [
+        {
+            category: LineItemCategory.RENT,
+            description: "Monthly Rent",
+            amount: rent,
+        },
+        ...(serviceCharge.gt(0)
+            ? [
+                  {
+                      category: LineItemCategory.SERVICE_CHARGE,
+                      description: "Service Charge",
+                      amount: serviceCharge,
+                  },
+              ]
+            : []),
+        ...utilities,
+        ...(legacyUtility.gt(0)
+            ? [
+                  {
+                      category: LineItemCategory.OTHER,
+                      description: "Utilities",
+                      amount: legacyUtility,
+                  },
+              ]
+            : []),
+        ...(penalty.gt(0)
+            ? [
+                  {
+                      category: LineItemCategory.PENALTY,
+                      description: "Late Payment Penalty",
+                      amount: penalty,
+                  },
+              ]
+            : []),
+    ];
 
     return prisma.invoice.create({
         data: {
@@ -94,6 +217,7 @@ const generateOne = async (
             leaseId: lease.id,
             unitId: lease.unitId,
             tenantId: lease.tenantId,
+            lineItems: { create: lineItems },
         },
     });
 };
@@ -127,7 +251,12 @@ const generateMonthlyBatch = async (
 
         const rent = new Prisma.Decimal(lease.monthlyRent);
         const sc = new Prisma.Decimal(lease.serviceCharge);
-        const total = rent.add(sc);
+        const utilities = buildUtilityLineItems(lease);
+        const utilityTotal = utilities.reduce(
+            (sum, item) => sum.add(item.amount),
+            new Prisma.Decimal(0),
+        );
+        const total = rent.add(sc).add(utilityTotal);
         const dueDate = new Date(
             billingMonth.getFullYear(),
             billingMonth.getMonth(),
@@ -143,12 +272,32 @@ const generateMonthlyBatch = async (
                 dueDate,
                 rentAmount: rent,
                 serviceCharge: sc,
+                utilityAmount: utilityTotal,
                 totalAmount: total,
                 dueAmount: total,
                 organizationId,
                 leaseId: lease.id,
                 unitId: lease.unitId,
                 tenantId: lease.tenantId,
+                lineItems: {
+                    create: [
+                        {
+                            category: LineItemCategory.RENT,
+                            description: "Monthly Rent",
+                            amount: rent,
+                        },
+                        ...(sc.gt(0)
+                            ? [
+                                  {
+                                      category: LineItemCategory.SERVICE_CHARGE,
+                                      description: "Service Charge",
+                                      amount: sc,
+                                  },
+                              ]
+                            : []),
+                        ...utilities,
+                    ],
+                },
             },
         });
         created.push(inv.id);
@@ -192,6 +341,7 @@ const getInvoiceById = async (user: IRequestUser, id: string) => {
             unit: { include: { building: true } },
             lease: true,
             payments: { orderBy: { paidAt: "desc" } },
+            lineItems: true,
         },
     });
 

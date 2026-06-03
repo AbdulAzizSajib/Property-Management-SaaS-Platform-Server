@@ -5,7 +5,7 @@ const planEnum = z.enum([
     SubscriptionPlan.FREE,
     SubscriptionPlan.BASIC,
     SubscriptionPlan.STANDARD,
-    SubscriptionPlan.ENTERPRISE,
+    SubscriptionPlan.BUSINESS,
 ]);
 
 export const createPlanConfigZodSchema = z.object({

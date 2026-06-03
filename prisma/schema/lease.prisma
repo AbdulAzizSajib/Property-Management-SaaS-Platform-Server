@@ -10,7 +10,13 @@ model Lease {
     securityDeposit Decimal     @default(0) @db.Decimal(12, 2)
     advanceBalance  Decimal     @default(0) @db.Decimal(12, 2) // unused advance
     rentDueDay      Int         @default(5) // day of month rent is due
-    notes           String?
+    billingMode     BillingMode @default(INCLUSIVE)
+    // Fixed monthly utility charges (used when billingMode = FIXED_SEPARATE)
+    gasCharge         Decimal? @db.Decimal(12, 2)
+    waterCharge       Decimal? @db.Decimal(12, 2)
+    electricityCharge Decimal? @db.Decimal(12, 2)
+    internetCharge    Decimal? @db.Decimal(12, 2)
+    notes             String?
     createdAt       DateTime    @default(now())
     updatedAt       DateTime    @updatedAt
 

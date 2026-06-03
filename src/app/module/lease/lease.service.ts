@@ -1,8 +1,10 @@
 import status from "http-status";
 import { Prisma } from "../../../generated/prisma/client";
 import {
+    BillingMode,
     InvoiceType,
     LeaseStatus,
+    LineItemCategory,
     PaymentStatus,
     UnitStatus,
 } from "../../../generated/prisma/enums";
@@ -54,6 +56,10 @@ const createLease = async (
         );
     }
 
+    const billingMode = payload.billingMode ?? BillingMode.INCLUSIVE;
+    const toDec = (n?: number) =>
+        n !== undefined ? new Prisma.Decimal(n) : null;
+
     const result = await prisma.$transaction(async (tx) => {
         const lease = await tx.lease.create({
             data: {
@@ -74,6 +80,11 @@ const createLease = async (
                         ? new Prisma.Decimal(payload.securityDeposit)
                         : new Prisma.Decimal(0),
                 rentDueDay: payload.rentDueDay ?? 5,
+                billingMode,
+                gasCharge: toDec(payload.gasCharge),
+                waterCharge: toDec(payload.waterCharge),
+                electricityCharge: toDec(payload.electricityCharge),
+                internetCharge: toDec(payload.internetCharge),
                 notes: payload.notes,
             },
         });
@@ -101,7 +112,49 @@ const createLease = async (
             payload.serviceCharge !== undefined
                 ? new Prisma.Decimal(payload.serviceCharge)
                 : new Prisma.Decimal(0);
-        const total = rentAmount.add(serviceCharge);
+
+        const utilities: Array<{
+            category: LineItemCategory;
+            description: string;
+            amount: Prisma.Decimal;
+        }> = [];
+
+        if (billingMode === BillingMode.FIXED_SEPARATE) {
+            if (payload.gasCharge && payload.gasCharge > 0) {
+                utilities.push({
+                    category: LineItemCategory.GAS,
+                    description: "Gas",
+                    amount: new Prisma.Decimal(payload.gasCharge),
+                });
+            }
+            if (payload.waterCharge && payload.waterCharge > 0) {
+                utilities.push({
+                    category: LineItemCategory.WATER,
+                    description: "Water",
+                    amount: new Prisma.Decimal(payload.waterCharge),
+                });
+            }
+            if (payload.electricityCharge && payload.electricityCharge > 0) {
+                utilities.push({
+                    category: LineItemCategory.ELECTRICITY,
+                    description: "Electricity",
+                    amount: new Prisma.Decimal(payload.electricityCharge),
+                });
+            }
+            if (payload.internetCharge && payload.internetCharge > 0) {
+                utilities.push({
+                    category: LineItemCategory.INTERNET,
+                    description: "Internet",
+                    amount: new Prisma.Decimal(payload.internetCharge),
+                });
+            }
+        }
+
+        const utilityTotal = utilities.reduce(
+            (sum, item) => sum.add(item.amount),
+            new Prisma.Decimal(0),
+        );
+        const total = rentAmount.add(serviceCharge).add(utilityTotal);
 
         await tx.invoice.create({
             data: {
@@ -112,12 +165,32 @@ const createLease = async (
                 dueDate,
                 rentAmount,
                 serviceCharge,
+                utilityAmount: utilityTotal,
                 totalAmount: total,
                 dueAmount: total,
                 organizationId,
                 leaseId: lease.id,
                 unitId: payload.unitId,
                 tenantId: payload.tenantId,
+                lineItems: {
+                    create: [
+                        {
+                            category: LineItemCategory.RENT,
+                            description: "Monthly Rent",
+                            amount: rentAmount,
+                        },
+                        ...(serviceCharge.gt(0)
+                            ? [
+                                  {
+                                      category: LineItemCategory.SERVICE_CHARGE,
+                                      description: "Service Charge",
+                                      amount: serviceCharge,
+                                  },
+                              ]
+                            : []),
+                        ...utilities,
+                    ],
+                },
             },
         });
 

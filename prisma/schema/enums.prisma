@@ -145,7 +145,23 @@ enum SubscriptionPlan {
   FREE
   BASIC
   STANDARD
-  ENTERPRISE
+  BUSINESS
+}
+
+enum BillingMode {
+  INCLUSIVE // utilities & service charge included in monthlyRent
+  FIXED_SEPARATE // fixed monthly utility/service amounts billed as line items
+}
+
+enum LineItemCategory {
+  RENT
+  SERVICE_CHARGE
+  GAS
+  WATER
+  ELECTRICITY
+  INTERNET
+  PENALTY
+  OTHER
 }
 
 enum SubscriptionStatus {

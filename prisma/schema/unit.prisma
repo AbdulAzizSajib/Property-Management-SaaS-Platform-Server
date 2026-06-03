@@ -5,9 +5,13 @@ model Unit {
     status        UnitStatus @default(VACANT)
     bedrooms      Int?
     bathrooms     Int?
+    drawingRooms  Int?
+    diningRooms   Int?
+    kitchens      Int?
+    balconies     Int?
     sizeSqft      Float?
     baseRent      Decimal    @db.Decimal(12, 2)
-    serviceCharge Decimal    @default(0) @db.Decimal(12, 2)
+    serviceCharge Decimal?   @db.Decimal(12, 2)
     description   String?
     createdAt     DateTime   @default(now())
     updatedAt     DateTime   @updatedAt
