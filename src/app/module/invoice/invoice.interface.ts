@@ -27,3 +27,20 @@ export interface IInvoiceQuery {
     unitId?: string;
     status?: PaymentStatus;
 }
+
+export interface IUpdateInvoicePayload {
+    dueDate?: string;
+    penaltyAmount?: number;
+    utilityAmount?: number;
+    utilities?: {
+        gas?: number;
+        water?: number;
+        electricity?: number;
+        internet?: number;
+    };
+    notes?: string;
+}
+
+export interface ICancelInvoicePayload {
+    reason: string;
+}

@@ -47,9 +47,53 @@ const getInvoiceById = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
+const updateInvoice = catchAsync(async (req: Request, res: Response) => {
+    const result = await InvoiceService.updateInvoice(
+        req.user,
+        req.params.id as string,
+        req.body,
+    );
+    sendResponse(res, {
+        httpStatusCode: status.OK,
+        success: true,
+        message: "Invoice updated successfully",
+        data: result,
+    });
+});
+
+const cancelInvoice = catchAsync(async (req: Request, res: Response) => {
+    const result = await InvoiceService.cancelInvoice(
+        req.user,
+        req.params.id as string,
+        req.body,
+    );
+    sendResponse(res, {
+        httpStatusCode: status.OK,
+        success: true,
+        message: "Invoice cancelled successfully",
+        data: result,
+    });
+});
+
+const deleteInvoice = catchAsync(async (req: Request, res: Response) => {
+    const result = await InvoiceService.deleteInvoice(
+        req.user,
+        req.params.id as string,
+    );
+    sendResponse(res, {
+        httpStatusCode: status.OK,
+        success: true,
+        message: "Invoice deleted permanently",
+        data: result,
+    });
+});
+
 export const InvoiceController = {
     generateOne,
     generateMonthlyBatch,
     getAllInvoices,
     getInvoiceById,
+    updateInvoice,
+    cancelInvoice,
+    deleteInvoice,
 };

@@ -50,6 +50,7 @@ enum PaymentStatus {
   DUE
   OVERDUE
   ADVANCE_ADJUSTED
+  CANCELLED
 }
 
 enum PaymentMethod {

@@ -827,6 +827,53 @@
             "method": "GET",
             "url": { "raw": "{{baseUrl}}/invoices/{{invoiceId}}", "host": ["{{baseUrl}}"], "path": ["invoices", "{{invoiceId}}"] }
           }
+        },
+        {
+          "name": "Update Invoice (notes/dueDate/penalty)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/invoices/{{invoiceId}}", "host": ["{{baseUrl}}"], "path": ["invoices", "{{invoiceId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"penaltyAmount\": 500,\n  \"dueDate\": \"2026-07-10\",\n  \"notes\": \"Extended due date by 5 days\"\n}"
+            },
+            "description": "Allowed: OWNER, MANAGER.\n\n• 'notes' is always editable.\n• Financial fields (dueDate, penaltyAmount, utilityAmount, utilities) editable only if NO payments are recorded yet.\n• Cannot edit a CANCELLED invoice.\n• Cannot pass both 'utilities' and 'utilityAmount'.\n\nTotal amount auto-recalculated from line items."
+          }
+        },
+        {
+          "name": "Update Invoice (utility breakdown)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/invoices/{{invoiceId}}", "host": ["{{baseUrl}}"], "path": ["invoices", "{{invoiceId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"utilities\": {\n    \"electricity\": 3200,\n    \"gas\": 2000\n  },\n  \"notes\": \"Electricity higher this month\"\n}"
+            },
+            "description": "Override utility breakdown. Only works for FIXED_SEPARATE leases. Replaces existing utility line items."
+          }
+        },
+        {
+          "name": "Cancel Invoice",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/invoices/{{invoiceId}}/cancel", "host": ["{{baseUrl}}"], "path": ["invoices", "{{invoiceId}}", "cancel"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Tenant disputed gas charge; regenerating with corrected breakdown\"\n}"
+            },
+            "description": "Allowed: OWNER, MANAGER.\n\nSoft cancel — preserves the invoice for audit. Sets status to CANCELLED, dueAmount to 0.\n\nRestrictions:\n• Cannot cancel an already-cancelled invoice.\n• Cannot cancel a PAID invoice (issue refund instead).\n• Cannot cancel if any payments exist (refund payments first).\n\nReason is required (min 5 chars)."
+          }
+        },
+        {
+          "name": "Delete Invoice (SUPER_ADMIN only)",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/invoices/{{invoiceId}}", "host": ["{{baseUrl}}"], "path": ["invoices", "{{invoiceId}}"] },
+            "description": "Allowed: SUPER_ADMIN only. Permanent deletion (no recovery).\n\nUse for cleaning up test data or truly erroneous entries.\n\nRestrictions:\n• Invoice must have NO payments.\n• Invoice status must be DUE or CANCELLED.\n\nFor regular cancellation use POST /invoices/:id/cancel instead."
+          }
         }
       ]
     },

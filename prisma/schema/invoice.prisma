@@ -14,6 +14,8 @@ model Invoice {
     paidAmount    Decimal       @default(0) @db.Decimal(12, 2)
     dueAmount     Decimal       @default(0) @db.Decimal(12, 2)
     notes         String?
+    cancelledAt   DateTime?
+    cancelReason  String?
     createdAt     DateTime      @default(now())
     updatedAt     DateTime      @updatedAt
 
