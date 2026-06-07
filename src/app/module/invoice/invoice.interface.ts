@@ -25,7 +25,15 @@ export interface IInvoiceQuery {
     leaseId?: string;
     tenantId?: string;
     unitId?: string;
-    status?: PaymentStatus;
+    // Single status or comma-separated list, e.g. "DUE,PARTIAL,OVERDUE"
+    status?: PaymentStatus | string;
+    // Single billing month — accepts "YYYY-MM" or any parseable date in that month
+    billingMonth?: string;
+    // Range filter on billingMonth (inclusive). Either or both may be supplied.
+    billingMonthFrom?: string;
+    billingMonthTo?: string;
+    // "billingMonth_asc" | "billingMonth_desc" (default). Asc = oldest unpaid first.
+    sort?: string;
 }
 
 export interface IUpdateInvoicePayload {

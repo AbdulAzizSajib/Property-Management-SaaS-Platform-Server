@@ -448,6 +448,21 @@ const generateMonthlyBatch = async (
     return { createdCount: created.length, skippedCount: skipped.length };
 };
 
+const parseBillingMonth = (raw: string, field: string): Date => {
+    // Accept "YYYY-MM" shorthand for convenience
+    const ymMatch = /^(\d{4})-(\d{2})$/.exec(raw);
+    const d = ymMatch
+        ? new Date(Number(ymMatch[1]), Number(ymMatch[2]) - 1, 1)
+        : new Date(raw);
+    if (Number.isNaN(d.getTime())) {
+        throw new AppError(
+            status.BAD_REQUEST,
+            `Invalid ${field}: expected YYYY-MM or ISO date`,
+        );
+    }
+    return monthStart(d);
+};
+
 const getAllInvoices = async (user: IRequestUser, query: IInvoiceQuery) => {
     const organizationId = assertOrg(user);
 
@@ -455,7 +470,49 @@ const getAllInvoices = async (user: IRequestUser, query: IInvoiceQuery) => {
     if (query.leaseId) where.leaseId = query.leaseId;
     if (query.tenantId) where.tenantId = query.tenantId;
     if (query.unitId) where.unitId = query.unitId;
-    if (query.status) where.status = query.status;
+
+    if (query.status) {
+        const allowed = new Set(Object.values(PaymentStatus) as string[]);
+        const values = String(query.status)
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+        const invalid = values.filter((v) => !allowed.has(v));
+        if (invalid.length) {
+            throw new AppError(
+                status.BAD_REQUEST,
+                `Invalid status value(s): ${invalid.join(", ")}`,
+            );
+        }
+        where.status =
+            values.length === 1
+                ? (values[0] as PaymentStatus)
+                : { in: values as PaymentStatus[] };
+    }
+
+    if (query.billingMonth) {
+        where.billingMonth = parseBillingMonth(query.billingMonth, "billingMonth");
+    } else if (query.billingMonthFrom || query.billingMonthTo) {
+        const range: Prisma.DateTimeFilter = {};
+        if (query.billingMonthFrom) {
+            range.gte = parseBillingMonth(
+                query.billingMonthFrom,
+                "billingMonthFrom",
+            );
+        }
+        if (query.billingMonthTo) {
+            range.lte = parseBillingMonth(
+                query.billingMonthTo,
+                "billingMonthTo",
+            );
+        }
+        where.billingMonth = range;
+    }
+
+    const orderBy: Prisma.InvoiceOrderByWithRelationInput[] =
+        query.sort === "billingMonth_asc"
+            ? [{ billingMonth: "asc" }, { createdAt: "asc" }]
+            : [{ billingMonth: "desc" }, { createdAt: "desc" }];
 
     return prisma.invoice.findMany({
         where,
@@ -469,7 +526,7 @@ const getAllInvoices = async (user: IRequestUser, query: IInvoiceQuery) => {
                 },
             },
         },
-        orderBy: [{ billingMonth: "desc" }, { createdAt: "desc" }],
+        orderBy,
     });
 };
 
