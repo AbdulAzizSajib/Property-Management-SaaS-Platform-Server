@@ -1,38 +1,38 @@
 model Complaint {
-    id             String            @id @default(cuid())
-    title          String
-    description    String
-    category       ComplaintCategory @default(OTHER)
-    status         ComplaintStatus   @default(OPEN)
-    priority       Priority          @default(MEDIUM)
-    imageUrls      String[] // photos of the issue
-    resolutionNote String?
-    resolvedAt     DateTime?
-    createdAt      DateTime          @default(now())
-    updatedAt      DateTime          @updatedAt
+  id             String            @id @default(uuid(7))
+  title          String
+  description    String
+  category       ComplaintCategory @default(OTHER)
+  status         ComplaintStatus   @default(OPEN)
+  priority       Priority          @default(MEDIUM)
+  imageUrls      String[] // photos of the issue
+  resolutionNote String?
+  resolvedAt     DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
-    organizationId String
-    organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-    buildingId String?
-    building   Building? @relation(fields: [buildingId], references: [id], onDelete: SetNull)
+  buildingId String?
+  building   Building? @relation(fields: [buildingId], references: [id], onDelete: SetNull)
 
-    unitId String?
-    unit   Unit?   @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  unitId String?
+  unit   Unit?   @relation(fields: [unitId], references: [id], onDelete: SetNull)
 
-    // Raised by a tenant
-    tenantId String?
-    tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  // Raised by a tenant
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
 
-    // Created-by user (caretaker can also create on tenant's behalf)
-    createdById String?
-    createdBy   User?   @relation("ComplaintCreatedBy", fields: [createdById], references: [id])
+  // Created-by user (caretaker can also create on tenant's behalf)
+  createdById String?
+  createdBy   User?   @relation("ComplaintCreatedBy", fields: [createdById], references: [id])
 
-    // Owner assigns a worker/user to handle it
-    assignedToId String?
-    assignedTo   User?   @relation("ComplaintAssignedTo", fields: [assignedToId], references: [id])
+  // Owner assigns a worker/user to handle it
+  assignedToId String?
+  assignedTo   User?   @relation("ComplaintAssignedTo", fields: [assignedToId], references: [id])
 
-    @@index([organizationId])
-    @@index([buildingId])
-    @@index([status])
+  @@index([organizationId])
+  @@index([buildingId])
+  @@index([status])
 }

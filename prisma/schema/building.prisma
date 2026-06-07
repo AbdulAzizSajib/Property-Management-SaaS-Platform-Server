@@ -1,31 +1,31 @@
 model Building {
-    id          String       @id @default(cuid())
-    name        String
-    type        BuildingType @default(RESIDENTIAL)
-    address     String
-    city        String?
-    area        String?
-    totalFloors Int          @default(1)
-    description String?
-    imageUrl    String?
-    isActive    Boolean      @default(true)
-    createdAt   DateTime     @default(now())
-    updatedAt   DateTime     @updatedAt
+  id          String       @id @default(uuid(7))
+  name        String
+  type        BuildingType @default(RESIDENTIAL)
+  address     String
+  city        String?
+  area        String?
+  totalFloors Int          @default(1)
+  description String?
+  imageUrl    String?
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
-    organizationId String
-    organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-    // The CARETAKER assigned to this building (one caretaker per building)
-    caretakerId String?
-    caretaker   User?   @relation("BuildingCaretaker", fields: [caretakerId], references: [id])
+  // The CARETAKER assigned to this building (one caretaker per building)
+  caretakerId String?
+  caretaker   User?   @relation("BuildingCaretaker", fields: [caretakerId], references: [id])
 
-    floors     Floor[]
-    units      Unit[]
-    managers   BuildingManager[]
-    expenses   Expense[]
-    complaints Complaint[]
-    documents  Document[]
+  floors     Floor[]
+  units      Unit[]
+  managers   BuildingManager[]
+  expenses   Expense[]
+  complaints Complaint[]
+  documents  Document[]
 
-    @@index([organizationId])
-    @@index([caretakerId])
+  @@index([organizationId])
+  @@index([caretakerId])
 }

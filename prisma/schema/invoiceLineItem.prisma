@@ -1,11 +1,11 @@
 model InvoiceLineItem {
-    id          String           @id @default(cuid())
-    invoiceId   String
-    invoice     Invoice          @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-    category    LineItemCategory @default(OTHER)
-    description String
-    amount      Decimal          @db.Decimal(12, 2)
+  id          String           @id @default(uuid(7))
+  invoiceId   String
+  invoice     Invoice          @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  category    LineItemCategory @default(OTHER)
+  description String
+  amount      Decimal          @db.Decimal(12, 2)
 
-    @@index([invoiceId])
-    @@index([category])
+  @@index([invoiceId])
+  @@index([category])
 }

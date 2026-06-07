@@ -1,27 +1,27 @@
 model RentAgreement {
-    id                 String          @id @default(cuid())
-    status             AgreementStatus @default(DRAFT)
-    pdfUrl             String?
-    content            String? // rendered agreement text / template data
-    signedByTenant     Boolean         @default(false)
-    signedByOwner      Boolean         @default(false)
-    tenantSignedAt     DateTime?
-    ownerSignedAt      DateTime?
-    tenantSignatureUrl String?
-    ownerSignatureUrl  String?
-    validFrom          DateTime?
-    validUntil         DateTime?
-    createdAt          DateTime        @default(now())
-    updatedAt          DateTime        @updatedAt
+  id                 String          @id @default(uuid(7))
+  status             AgreementStatus @default(DRAFT)
+  pdfUrl             String?
+  content            String? // rendered agreement text / template data
+  signedByTenant     Boolean         @default(false)
+  signedByOwner      Boolean         @default(false)
+  tenantSignedAt     DateTime?
+  ownerSignedAt      DateTime?
+  tenantSignatureUrl String?
+  ownerSignatureUrl  String?
+  validFrom          DateTime?
+  validUntil         DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
-    organizationId String
-    organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-    leaseId String @unique
-    lease   Lease  @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  leaseId String @unique
+  lease   Lease  @relation(fields: [leaseId], references: [id], onDelete: Cascade)
 
-    tenantId String
-    tenant   Tenant @relation(fields: [tenantId], references: [id])
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
 
-    @@index([organizationId])
+  @@index([organizationId])
 }

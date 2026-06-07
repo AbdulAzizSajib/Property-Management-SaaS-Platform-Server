@@ -1,12 +1,12 @@
 model RentIncrease {
-    id            String   @id @default(cuid())
-    leaseId       String
-    lease         Lease    @relation(fields: [leaseId], references: [id], onDelete: Cascade)
-    previousRent  Decimal  @db.Decimal(12, 2)
-    newRent       Decimal  @db.Decimal(12, 2)
-    effectiveFrom DateTime
-    reason        String?
-    createdAt     DateTime @default(now())
+  id            String   @id @default(uuid(7))
+  leaseId       String
+  lease         Lease    @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  previousRent  Decimal  @db.Decimal(12, 2)
+  newRent       Decimal  @db.Decimal(12, 2)
+  effectiveFrom DateTime
+  reason        String?
+  createdAt     DateTime @default(now())
 
-    @@index([leaseId])
+  @@index([leaseId])
 }

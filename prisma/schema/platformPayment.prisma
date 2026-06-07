@@ -1,21 +1,21 @@
 model PlatformPayment {
-    id                 String        @id @default(cuid())
-    amount             Decimal       @db.Decimal(10, 2)
-    method             PaymentMethod @default(BKASH)
-    transactionId      String?
-    status             PaymentStatus @default(PAID)
-    billingPeriodStart DateTime
-    billingPeriodEnd   DateTime
-    paidAt             DateTime      @default(now())
-    invoiceUrl         String?
-    createdAt          DateTime      @default(now())
+  id                 String        @id @default(uuid(7))
+  amount             Decimal       @db.Decimal(10, 2)
+  method             PaymentMethod @default(BKASH)
+  transactionId      String?
+  status             PaymentStatus @default(PAID)
+  billingPeriodStart DateTime
+  billingPeriodEnd   DateTime
+  paidAt             DateTime      @default(now())
+  invoiceUrl         String?
+  createdAt          DateTime      @default(now())
 
-    organizationId String
-    organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-    subscriptionId String
-    subscription   Subscription @relation(fields: [subscriptionId], references: [id])
+  subscriptionId String
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id])
 
-    @@index([organizationId])
-    @@index([subscriptionId])
+  @@index([organizationId])
+  @@index([subscriptionId])
 }

@@ -1,7 +1,7 @@
 model User {
-  id                 String    @id
+  id                 String     @id
   name               String
-  email              String    @unique
+  email              String     @unique
   emailVerified      Boolean    @default(false)
   role               Role       @default(OWNER)
   status             UserStatus @default(ACTIVE)
@@ -12,8 +12,8 @@ model User {
   isDeleted          Boolean    @default(false)
   deletedAt          DateTime?
   image              String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
   sessions           Session[]
   accounts           Account[]
 

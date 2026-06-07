@@ -1,13 +1,13 @@
 model Floor {
-    id          String   @id @default(cuid())
-    name        String // e.g. "Ground", "1st Floor"
-    floorNumber Int
-    buildingId  String
-    building    Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-    units       Unit[]
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @updatedAt
+  id          String   @id @default(uuid(7))
+  name        String // e.g. "Ground", "1st Floor"
+  floorNumber Int
+  buildingId  String
+  building    Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  units       Unit[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-    @@unique([buildingId, floorNumber])
-    @@index([buildingId])
+  @@unique([buildingId, floorNumber])
+  @@index([buildingId])
 }

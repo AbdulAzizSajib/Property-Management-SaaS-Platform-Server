@@ -1,23 +1,23 @@
 model Notification {
-    id             String              @id @default(cuid())
-    type           NotificationType    @default(GENERAL)
-    channel        NotificationChannel @default(IN_APP)
-    status         NotificationStatus  @default(PENDING)
-    title          String
-    message        String
-    recipientPhone String?
-    recipientEmail String?
-    scheduledAt    DateTime?
-    sentAt         DateTime?
-    errorMessage   String?
-    createdAt      DateTime            @default(now())
+  id             String              @id @default(uuid(7))
+  type           NotificationType    @default(GENERAL)
+  channel        NotificationChannel @default(IN_APP)
+  status         NotificationStatus  @default(PENDING)
+  title          String
+  message        String
+  recipientPhone String?
+  recipientEmail String?
+  scheduledAt    DateTime?
+  sentAt         DateTime?
+  errorMessage   String?
+  createdAt      DateTime            @default(now())
 
-    organizationId String
-    organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-    recipientUserId String?
-    recipientUser   User?   @relation("NotificationRecipientUser", fields: [recipientUserId], references: [id])
+  recipientUserId String?
+  recipientUser   User?   @relation("NotificationRecipientUser", fields: [recipientUserId], references: [id])
 
-    @@index([organizationId])
-    @@index([status])
+  @@index([organizationId])
+  @@index([status])
 }

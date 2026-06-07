@@ -1,20 +1,20 @@
 model ActivityLog {
-    id         String   @id @default(cuid())
-    action     String // e.g. "PAYMENT_CREATED", "TENANT_UPDATED"
-    entityType String // e.g. "Payment", "Tenant"
-    entityId   String?
-    metadata   Json?
-    ipAddress  String?
-    createdAt  DateTime @default(now())
+  id         String   @id @default(uuid(7))
+  action     String // e.g. "PAYMENT_CREATED", "TENANT_UPDATED"
+  entityType String // e.g. "Payment", "Tenant"
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
 
-    organizationId String?
-    organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-    userId String?
-    user   User?   @relation(fields: [userId], references: [id])
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
 
-    @@index([organizationId])
-    @@index([userId])
-    @@index([entityType])
-    @@index([createdAt])
+  @@index([organizationId])
+  @@index([userId])
+  @@index([entityType])
+  @@index([createdAt])
 }
