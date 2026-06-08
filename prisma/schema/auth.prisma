@@ -5,7 +5,7 @@ model User {
   emailVerified      Boolean    @default(false)
   role               Role       @default(OWNER)
   status             UserStatus @default(ACTIVE)
-  contactNumber      String?
+  contactNumber      String?    @unique
   isActive           Boolean    @default(true)
   lastLoginAt        DateTime?
   needPasswordChange Boolean    @default(false)

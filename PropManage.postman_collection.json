@@ -80,7 +80,7 @@
           }
         },
         {
-          "name": "Login",
+          "name": "Login (Email)",
           "event": [
             {
               "listen": "test",
@@ -112,8 +112,47 @@
             "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"owner@example.com\",\n  \"password\": \"password123\"\n}"
+              "raw": "{\n  \"identifier\": \"owner@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "description": "Login with email address.\n\nThe 'identifier' field accepts either an email or a phone number — server auto-detects based on '@' character.\n\nReturns 401 'Invalid credentials' for unknown identifier (no user enumeration).\n\nAuto-captures accessToken, refreshToken, sessionToken, userId, organizationId on success."
+          }
+        },
+        {
+          "name": "Login (Phone)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  const accessToken = json?.data?.accessToken;",
+                  "  const refreshToken = json?.data?.refreshToken;",
+                  "  const sessionToken = json?.data?.token;",
+                  "  const userId = json?.data?.user?.id;",
+                  "  const organizationId = json?.data?.user?.organizationId || json?.data?.organization?.id;",
+                  "  if (accessToken) pm.collectionVariables.set('accessToken', accessToken);",
+                  "  if (refreshToken) pm.collectionVariables.set('refreshToken', refreshToken);",
+                  "  if (sessionToken) pm.collectionVariables.set('sessionToken', sessionToken);",
+                  "  if (userId) pm.collectionVariables.set('userId', userId);",
+                  "  if (organizationId) pm.collectionVariables.set('organizationId', organizationId);",
+                  "  console.log('Tokens captured via phone login');",
+                  "} catch (e) { console.log('No JSON body to parse'); }"
+                ]
+              }
             }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"01711000111\",\n  \"password\": \"password123\"\n}"
+            },
+            "description": "Login with phone number.\n\nServer looks up User.contactNumber to find the account, then signs in with the same password.\n\nRequirements:\n• User.contactNumber must be set (during registration or staff creation).\n• Same password as email login — no separate phone password.\n\nReturns 401 'Invalid credentials' if phone not found in the system."
           }
         },
         {
@@ -151,6 +190,34 @@
           "request": {
             "method": "POST",
             "url": { "raw": "{{baseUrl}}/auth/logout", "host": ["{{baseUrl}}"], "path": ["auth", "logout"] }
+          }
+        },
+        {
+          "name": "Resend Verification OTP",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/resend-verification-otp", "host": ["{{baseUrl}}"], "path": ["auth", "resend-verification-otp"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"owner@example.com\"\n}"
+            },
+            "description": "Generates a fresh email-verification OTP and sends it via email.\n\nUse when:\n• Previous OTP expired (default 2 minutes)\n• User didn't receive the original email\n\nErrors:\n• 404 — user not found\n• 400 — email already verified"
+          }
+        },
+        {
+          "name": "Resend Password Reset OTP",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/resend-password-reset-otp", "host": ["{{baseUrl}}"], "path": ["auth", "resend-password-reset-otp"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"owner@example.com\"\n}"
+            },
+            "description": "Generates a fresh password-reset OTP. Email must already be verified.\n\nUse when password-reset OTP expired during the reset flow."
           }
         },
         {

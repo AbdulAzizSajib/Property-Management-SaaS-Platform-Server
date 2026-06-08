@@ -1,5 +1,5 @@
 export interface ILoginUserPayload {
-    email: string;
+    identifier: string; // email or phone number
     password: string;
 }
 

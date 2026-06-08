@@ -27,7 +27,9 @@ export const registerOwnerZodSchema = z.object({
 });
 
 export const loginUserZodSchema = z.object({
-    email: z.email("Invalid email address"),
+    identifier: z
+        .string("Email or phone number is required")
+        .min(3, "Email or phone number is required"),
     password: z.string("Password is required").min(1, "Password is required"),
 });
 
@@ -47,6 +49,10 @@ export const verifyEmailZodSchema = z.object({
 });
 
 export const forgetPasswordZodSchema = z.object({
+    email: z.email("Invalid email address"),
+});
+
+export const resendOtpZodSchema = z.object({
     email: z.email("Invalid email address"),
 });
 

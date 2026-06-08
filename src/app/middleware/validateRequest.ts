@@ -3,19 +3,19 @@ import z from "zod";
 
 export const validateRequest = (zodSchema: z.ZodObject) => {
     return (req: Request, res: Response, next: NextFunction) => {
-        if(req.body.data){
-            req.body = JSON.parse(req.body.data)
+        if (req.body?.data) {
+            req.body = JSON.parse(req.body.data);
         }
 
-        const parsedResult = zodSchema.safeParse(req.body)
+        const parsedResult = zodSchema.safeParse(req.body);
 
         if (!parsedResult.success) {
-            next(parsedResult.error)
+            return next(parsedResult.error);
         }
 
-        //sanitizing the data
+        // sanitize: replace req.body with parsed (stripped of unknown fields)
         req.body = parsedResult.data;
 
         next();
-    }
-}
+    };
+};

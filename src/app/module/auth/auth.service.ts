@@ -107,8 +107,37 @@ const registerOwner = async (payload: IRegisterOwnerPayload) => {
     }
 };
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const resolveEmailFromIdentifier = async (
+    identifier: string,
+): Promise<string> => {
+    const trimmed = identifier.trim();
+
+    if (EMAIL_REGEX.test(trimmed)) {
+        return trimmed.toLowerCase();
+    }
+
+    // Treat as phone number — look up the user by contactNumber
+    const user = await prisma.user.findUnique({
+        where: { contactNumber: trimmed },
+        select: { email: true },
+    });
+
+    if (!user) {
+        throw new AppError(
+            status.UNAUTHORIZED,
+            "Invalid credentials",
+        );
+    }
+
+    return user.email;
+};
+
 const loginUser = async (payload: ILoginUserPayload) => {
-    const { email, password } = payload;
+    const { identifier, password } = payload;
+
+    const email = await resolveEmailFromIdentifier(identifier);
 
     const data = await auth.api.signInEmail({ body: { email, password } });
 
@@ -252,6 +281,52 @@ const verifyEmail = async (email: string, otp: string) => {
     }
 };
 
+const resendVerificationOtp = async (email: string) => {
+    const user = await prisma.user.findUnique({
+        where: { email },
+        select: { id: true, emailVerified: true, isActive: true, isDeleted: true },
+    });
+
+    if (!user || user.isDeleted) {
+        throw new AppError(status.NOT_FOUND, "User not found");
+    }
+
+    if (user.emailVerified) {
+        throw new AppError(status.BAD_REQUEST, "Email is already verified");
+    }
+
+    if (!user.isActive) {
+        throw new AppError(status.FORBIDDEN, "Account is inactive");
+    }
+
+    await auth.api.sendVerificationOTP({
+        body: { email, type: "email-verification" },
+    });
+};
+
+const resendPasswordResetOtp = async (email: string) => {
+    const user = await prisma.user.findUnique({
+        where: { email },
+        select: { id: true, emailVerified: true, isActive: true, isDeleted: true },
+    });
+
+    if (!user || user.isDeleted) {
+        throw new AppError(status.NOT_FOUND, "User not found");
+    }
+
+    if (!user.emailVerified) {
+        throw new AppError(status.BAD_REQUEST, "Email not verified");
+    }
+
+    if (!user.isActive) {
+        throw new AppError(status.FORBIDDEN, "Account is inactive");
+    }
+
+    await auth.api.sendVerificationOTP({
+        body: { email, type: "forget-password" },
+    });
+};
+
 const forgetPassword = async (email: string) => {
     const isUserExist = await prisma.user.findUnique({ where: { email } });
 
@@ -328,6 +403,8 @@ export const AuthService = {
     changePassword,
     logoutUser,
     verifyEmail,
+    resendVerificationOtp,
+    resendPasswordResetOtp,
     forgetPassword,
     resetPassword,
     googleLoginSuccess,
