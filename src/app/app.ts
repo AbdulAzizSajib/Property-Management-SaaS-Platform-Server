@@ -6,12 +6,12 @@ import express, { Application, Request, Response } from "express";
 // import cron from "node-cron";
 import path from "path";
 import qs from "qs";
-import { envVars } from "./app/config/env";
-import { auth } from "./app/lib/auth";
-import { globalErrorHandler } from "./app/middleware/globalErrorHandler";
-import { notFound } from "./app/middleware/notFound";
+import { envVars } from "./config/env";
+import { auth } from "./lib/auth";
+import { globalErrorHandler } from "./middleware/globalErrorHandler";
+import { notFound } from "./middleware/notFound";
 
-import { IndexRoutes } from "./app/routes";
+import { IndexRoutes } from "./routes";
 
 const app: Application = express();
 app.set("query parser", (str : string) => qs.parse(str));
