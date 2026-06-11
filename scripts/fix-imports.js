@@ -16,14 +16,21 @@ function fixDir(dir) {
 
     let content = fs.readFileSync(full, "utf8");
 
-    // Replace your existing content.replace block with this:
     content = content.replace(
       /from\s+["'](\.\.?\/[^"']+)["']/g,
       (match, p1) => {
-        // If it already ends in .js, return the match unchanged
         if (p1.endsWith(".js")) return match;
 
-        // Otherwise, append .js
+        // Resolve the path relative to the current file's directory
+        const currentDir = path.dirname(full);
+        const resolved = path.resolve(currentDir, p1);
+
+        // Check if it's a directory with index.js
+        if (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
+          return match.replace(p1, `${p1}/index.js`);
+        }
+
+        // Otherwise append .js
         return match.replace(p1, `${p1}.js`);
       },
     );
