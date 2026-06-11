@@ -2,11 +2,13 @@
   "name": "Backend-Project-Property-Management-SaaS-Platform",
   "version": "1.0.0",
   "description": "",
-    "main": "dist/app/server.js", 
+  "main": "dist/app/server.js",
   "scripts": {
     "start": "node dist/app/server.js",
-     "build": "prisma generate && tsc && node scripts/fix-imports.js",
-    "dev": "tsx watch src/app/server.ts",
+    "start:bun": "bun dist/app/server.js",
+    "build": "prisma generate && tsc && node scripts/fix-imports.js",
+    "build:local": "tsc && node scripts/fix-imports.js",
+    "dev": "bun --watch src/app/server.ts",
     "lint": "eslint ./src/**/*",
     "migrate": "prisma migrate dev",
     "generate": "prisma generate",
@@ -44,6 +46,9 @@
     "stripe": "^20.3.1",
     "uuid": "^13.0.0",
     "zod": "^4.3.6"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["prisma", "@prisma/engines", "esbuild"]
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
