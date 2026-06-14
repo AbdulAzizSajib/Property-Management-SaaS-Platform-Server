@@ -22,7 +22,7 @@ app.set("views",path.resolve(process.cwd(), `src/app/templates`) )
 // app.post("/webhook", express.raw({ type: "application/json" }), PaymentController.handleStripeWebhookEvent)
 
 app.use(cors({
-    origin : [envVars.FRONTEND_URL, envVars.BETTER_AUTH_URL, "http://localhost:3000", "http://localhost:5000", "http://bariyan.vercel.app" ],
+    origin : [envVars.FRONTEND_URL, envVars.BETTER_AUTH_URL, "http://localhost:3000", "http://localhost:5000", "http://bariyan.vercel.app", "https://bariyan.com" , "https://bariyan-server.vercel.app" ],
     credentials : true,
     methods : ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders : ["Content-Type", "Authorization"]
