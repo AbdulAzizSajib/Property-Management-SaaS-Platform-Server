@@ -37,7 +37,7 @@ const buildTokenPayload = (user: {
 });
 
 const registerOwner = async (payload: IRegisterOwnerPayload) => {
-    const { name, email, password, contactNumber, organization } = payload;
+    const { name, email, password, contactNumber } = payload;
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
@@ -49,7 +49,7 @@ const registerOwner = async (payload: IRegisterOwnerPayload) => {
         throw new AppError(status.CONFLICT, "User with this contact number already exists");
     }
 
-    const slug = await generateUniqueOrgSlug(organization.name);
+    const slug = await generateUniqueOrgSlug(name);
 
     const data = await auth.api.signUpEmail({
         body: {
@@ -67,11 +67,8 @@ const registerOwner = async (payload: IRegisterOwnerPayload) => {
         const org = await prisma.$transaction(async (tx) => {
             const createdOrg = await tx.organization.create({
                 data: {
-                    name: organization.name,
+                    name,
                     slug,
-                    phone: organization.phone,
-                    email: organization.email,
-                    address: organization.address,
                 },
             });
 
@@ -96,14 +93,10 @@ const registerOwner = async (payload: IRegisterOwnerPayload) => {
             where: { id: data.user.id },
         });
 
-        const tokenPayload = buildTokenPayload(updatedUser);
-        const accessToken = tokenUtils.getAccessToken(tokenPayload);
-        const refreshToken = tokenUtils.getRefreshToken(tokenPayload);
-
+        // No tokens here: email must be verified via OTP first.
+        // Tokens are issued after successful email verification.
         return {
-            ...data,
-            accessToken,
-            refreshToken,
+            user: updatedUser,
             organization: org,
         };
     } catch (error) {
@@ -278,12 +271,25 @@ const logoutUser = async (sessionToken: string) => {
 const verifyEmail = async (email: string, otp: string) => {
     const result = await auth.api.verifyEmailOTP({ body: { email, otp } });
 
-    if (result.status && !result.user.emailVerified) {
+    if (!result.status) {
+        throw new AppError(status.BAD_REQUEST, "Invalid or expired OTP");
+    }
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+
+    if (!user.emailVerified) {
         await prisma.user.update({
             where: { email },
             data: { emailVerified: true },
         });
+        user.emailVerified = true;
     }
+
+    const tokenPayload = buildTokenPayload(user);
+    const accessToken = tokenUtils.getAccessToken(tokenPayload);
+    const refreshToken = tokenUtils.getRefreshToken(tokenPayload);
+
+    return { ...result, accessToken, refreshToken };
 };
 
 const resendVerificationOtp = async (email: string) => {

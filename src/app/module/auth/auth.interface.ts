@@ -8,12 +8,6 @@ export interface IRegisterOwnerPayload {
     email: string;
     password: string;
     contactNumber?: string;
-    organization: {
-        name: string;
-        phone?: string;
-        email?: string;
-        address?: string;
-    };
 }
 
 export interface IChangePasswordPayload {

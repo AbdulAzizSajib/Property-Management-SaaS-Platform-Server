@@ -11,17 +11,13 @@ import { AuthService } from "./auth.service";
 
 const registerOwner = catchAsync(async (req: Request, res: Response) => {
     const result = await AuthService.registerOwner(req.body);
-    const { accessToken, refreshToken, token, ...rest } = result;
-
-    tokenUtils.setAccessTokenCookie(res, accessToken);
-    tokenUtils.setRefreshTokenCookie(res, refreshToken);
-    if (token) tokenUtils.setBetterAuthSessionCookie(res, token);
 
     sendResponse(res, {
         httpStatusCode: status.CREATED,
         success: true,
-        message: "Owner registered successfully",
-        data: { token, accessToken, refreshToken, ...rest },
+        message:
+            "Owner registered successfully. Please verify your email with the OTP sent to you.",
+        data: result,
     });
 });
 
@@ -123,12 +119,19 @@ const logoutUser = catchAsync(async (req: Request, res: Response) => {
 
 const verifyEmail = catchAsync(async (req: Request, res: Response) => {
     const { email, otp } = req.body;
-    await AuthService.verifyEmail(email, otp);
+    const result = await AuthService.verifyEmail(email, otp);
+
+    const { accessToken, refreshToken, token, ...rest } = result;
+
+    tokenUtils.setAccessTokenCookie(res, accessToken);
+    tokenUtils.setRefreshTokenCookie(res, refreshToken);
+    if (token) tokenUtils.setBetterAuthSessionCookie(res, token);
 
     sendResponse(res, {
         httpStatusCode: status.OK,
         success: true,
         message: "Email verified successfully",
+        data: { token, accessToken, refreshToken, ...rest },
     });
 });
 

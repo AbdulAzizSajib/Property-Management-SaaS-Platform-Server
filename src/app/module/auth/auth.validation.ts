@@ -15,15 +15,6 @@ export const registerOwnerZodSchema = z.object({
         .min(11, "Contact number must be at least 11 characters")
         .max(15, "Contact number must be at most 15 characters")
         .optional(),
-    organization: z.object({
-        name: z
-            .string("Organization name is required")
-            .min(2, "Organization name must be at least 2 characters")
-            .max(100, "Organization name must be at most 100 characters"),
-        phone: z.string().optional(),
-        email: z.email("Invalid organization email").optional(),
-        address: z.string().max(200).optional(),
-    }),
 });
 
 export const loginUserZodSchema = z.object({
@@ -45,7 +36,7 @@ export const verifyEmailZodSchema = z.object({
     email: z.email("Invalid email address"),
     otp: z
         .string("OTP is required")
-        .length(6, "OTP must be exactly 6 digits"),
+        .length(4, "OTP must be exactly 4 digits"),
 });
 
 export const forgetPasswordZodSchema = z.object({
@@ -58,7 +49,7 @@ export const resendOtpZodSchema = z.object({
 
 export const resetPasswordZodSchema = z.object({
     email: z.email("Invalid email address"),
-    otp: z.string("OTP is required").length(6, "OTP must be exactly 6 digits"),
+    otp: z.string("OTP is required").length(4, "OTP must be exactly 4   digits"),
     newPassword: z
         .string("New password is required")
         .min(6, "Password must be at least 6 characters")
