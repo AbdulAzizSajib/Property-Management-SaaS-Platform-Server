@@ -44,6 +44,11 @@ const registerOwner = async (payload: IRegisterOwnerPayload) => {
         throw new AppError(status.CONFLICT, "User with this email already exists");
     }
 
+    const existingContact = await prisma.user.findFirst({ where: { contactNumber } });
+    if (existingContact) {
+        throw new AppError(status.CONFLICT, "User with this contact number already exists");
+    }
+
     const slug = await generateUniqueOrgSlug(organization.name);
 
     const data = await auth.api.signUpEmail({
