@@ -177,7 +177,12 @@ const getMe = async (user: IRequestUser) => {
     return isUserExists;
 };
 
-const getNewToken = async (refreshToken: string, sessionToken: string) => {
+const getNewToken = async (refreshToken: string, rawSessionToken: string) => {
+    // Better Auth stores cookie as "{token}.{signature}" but DB has only "{token}"
+    const sessionToken = rawSessionToken.includes(".")
+        ? rawSessionToken.split(".")[0]
+        : rawSessionToken;
+
     const isSessionTokenExists = await prisma.session.findUnique({
         where: { token: sessionToken },
         include: { user: true },

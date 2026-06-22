@@ -12,17 +12,22 @@ export const checkAuth =
     (...authRoles: Role[]) =>
     async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const sessionToken = CookieUtils.getCookie(
+            const rawSessionToken = CookieUtils.getCookie(
                 req,
                 "better-auth.session_token",
             );
 
-            if (!sessionToken) {
+            if (!rawSessionToken) {
                 throw new AppError(
                     status.UNAUTHORIZED,
                     "Unauthorized access! No session token provided.",
                 );
             }
+
+            // Better Auth stores cookie as "{token}.{signature}" but DB has only "{token}"
+            const sessionToken = rawSessionToken.includes(".")
+                ? rawSessionToken.split(".")[0]
+                : rawSessionToken;
 
             const sessionExists = await prisma.session.findFirst({
                 where: {
