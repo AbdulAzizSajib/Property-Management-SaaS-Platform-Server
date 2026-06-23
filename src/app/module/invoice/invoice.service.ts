@@ -256,7 +256,22 @@ const generateOne = async (
         new Prisma.Decimal(0),
     );
     const utility = utilityFromItems.add(legacyUtility);
-    const total = rent.add(serviceCharge).add(utility).add(penalty);
+
+    // Carry forward any unpaid balance from previous invoices of this lease
+    const unpaidInvoices = await prisma.invoice.findMany({
+        where: {
+            leaseId: lease.id,
+            billingMonth: { lt: billingMonth },
+            status: { in: [PaymentStatus.PARTIAL, PaymentStatus.DUE, PaymentStatus.OVERDUE] },
+        },
+        select: { dueAmount: true },
+    });
+    const previousDue = unpaidInvoices.reduce(
+        (sum, inv) => sum.add(inv.dueAmount),
+        new Prisma.Decimal(0),
+    );
+
+    const total = rent.add(serviceCharge).add(utility).add(penalty).add(previousDue);
 
     if (total.lte(0)) {
         throw new AppError(
@@ -302,6 +317,15 @@ const generateOne = async (
                       category: LineItemCategory.PENALTY,
                       description: "Late Payment Penalty",
                       amount: penalty,
+                  },
+              ]
+            : []),
+        ...(previousDue.gt(0)
+            ? [
+                  {
+                      category: LineItemCategory.PREVIOUS_DUE,
+                      description: "Previous Outstanding Balance",
+                      amount: previousDue,
                   },
               ]
             : []),
@@ -396,7 +420,22 @@ const generateMonthlyBatch = async (
             (sum, item) => sum.add(item.amount),
             new Prisma.Decimal(0),
         );
-        const total = rent.add(sc).add(utilityTotal);
+
+        // Carry forward any unpaid balance from previous invoices of this lease
+        const unpaidInvoices = await prisma.invoice.findMany({
+            where: {
+                leaseId: lease.id,
+                billingMonth: { lt: billingMonth },
+                status: { in: [PaymentStatus.PARTIAL, PaymentStatus.DUE, PaymentStatus.OVERDUE] },
+            },
+            select: { dueAmount: true },
+        });
+        const previousDue = unpaidInvoices.reduce(
+            (sum, inv) => sum.add(inv.dueAmount),
+            new Prisma.Decimal(0),
+        );
+
+        const total = rent.add(sc).add(utilityTotal).add(previousDue);
 
         if (total.lte(0)) {
             skipped.push(lease.id);
@@ -438,6 +477,15 @@ const generateMonthlyBatch = async (
                               ]
                             : []),
                         ...utilities,
+                        ...(previousDue.gt(0)
+                            ? [
+                                  {
+                                      category: LineItemCategory.PREVIOUS_DUE,
+                                      description: "Previous Outstanding Balance",
+                                      amount: previousDue,
+                                  },
+                              ]
+                            : []),
                     ],
                 },
             },

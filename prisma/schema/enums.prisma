@@ -162,6 +162,7 @@ enum LineItemCategory {
   ELECTRICITY
   INTERNET
   PENALTY
+  PREVIOUS_DUE
   OTHER
 }
 
