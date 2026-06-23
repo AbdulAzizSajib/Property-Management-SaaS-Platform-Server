@@ -8,7 +8,6 @@ export interface ICreateBuildingPayload {
     area?: string;
     totalFloors?: number;
     description?: string;
-    imageUrl?: string;
     caretakerId?: string;
 }
 
@@ -20,7 +19,6 @@ export interface IUpdateBuildingPayload {
     area?: string;
     totalFloors?: number;
     description?: string;
-    imageUrl?: string;
     isActive?: boolean;
 }
 

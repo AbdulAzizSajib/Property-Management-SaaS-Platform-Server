@@ -20,7 +20,6 @@ export const createBuildingZodSchema = z.object({
     area: z.string().max(60).optional(),
     totalFloors: z.number().int().min(1).max(200).optional(),
     description: z.string().max(500).optional(),
-    imageUrl: z.url().optional(),
     caretakerId: z.string().optional(),
 });
 
@@ -32,7 +31,6 @@ export const updateBuildingZodSchema = z.object({
     area: z.string().max(60).optional(),
     totalFloors: z.number().int().min(1).max(200).optional(),
     description: z.string().max(500).optional(),
-    imageUrl: z.url().optional(),
     isActive: z.boolean().optional(),
 });
 

@@ -161,7 +161,12 @@ export const auth = betterAuth({
     },
 
    
-    trustedOrigins: [process.env.BETTER_AUTH_URL || "http://localhost:5000", envVars.FRONTEND_URL],
+    trustedOrigins: [
+        process.env.BETTER_AUTH_URL,
+        "http://localhost:5000",
+        "https://bariyan-server.vercel.app",
+        envVars.FRONTEND_URL,
+    ].filter(Boolean) as string[],
 
     advanced: {
         useSecureCookies: envVars.NODE_ENV === "production",
