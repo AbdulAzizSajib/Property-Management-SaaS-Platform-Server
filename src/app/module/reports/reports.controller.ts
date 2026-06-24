@@ -21,6 +21,7 @@ const getRentCollectionReport = catchAsync(async (req: Request, res: Response) =
         success: true,
         message: "Rent collection report fetched successfully",
         data: result,
+        // testt for tesst
     });
 });
 
