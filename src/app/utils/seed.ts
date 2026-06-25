@@ -81,7 +81,6 @@ const PLAN_CONFIGS: Array<{
         features: [
             "Up to 9 units",
             "Tenant & lease management",
-            "bKash / Nagad rent collection",
             "Email support (Bangla & English)",
         ],
     },
@@ -101,7 +100,6 @@ const PLAN_CONFIGS: Array<{
         features: [
             "Up to 30 units",
             "Tenant & lease management",
-            "bKash / Nagad rent collection",
             "Auto SMS rent reminders",
             "Email support (Bangla & English)",
         ],

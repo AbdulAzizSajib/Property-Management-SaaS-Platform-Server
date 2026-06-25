@@ -396,12 +396,46 @@ const resetPassword = async (
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const googleLoginSuccess = async (session: Record<string, any>) => {
-    const user = await prisma.user.findUnique({
+    let user = await prisma.user.findUnique({
         where: { id: session.user.id },
     });
 
     if (!user) {
         throw new AppError(status.NOT_FOUND, "User not found");
+    }
+
+    // First Google login: the user was created by Better Auth's OAuth flow
+    // but has no organization yet. Create the org + default subscription,
+    // mirroring registerOwner. Idempotent: skipped once organizationId is set.
+    if (!user.organizationId) {
+        const slug = await generateUniqueOrgSlug(user.name);
+
+        await prisma.$transaction(async (tx) => {
+            const createdOrg = await tx.organization.create({
+                data: {
+                    name: user!.name,
+                    slug,
+                },
+            });
+
+            await tx.user.update({
+                where: { id: user!.id },
+                data: {
+                    organizationId: createdOrg.id,
+                    role: Role.OWNER,
+                },
+            });
+
+            await SubscriptionService.createDefaultSubscriptionForOrg(
+                createdOrg.id,
+                tx,
+            );
+        });
+
+        // Re-read so the token carries the new organizationId.
+        user = await prisma.user.findUniqueOrThrow({
+            where: { id: user.id },
+        });
     }
 
     const tokenPayload = buildTokenPayload(user);

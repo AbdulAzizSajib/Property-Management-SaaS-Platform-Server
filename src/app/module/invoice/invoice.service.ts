@@ -125,6 +125,33 @@ const buildUtilityLineItems = (
     return items;
 };
 
+type UnpaidSource = {
+    id: string;
+    invoiceNumber: string;
+    billingMonth: Date;
+    dueAmount: Prisma.Decimal;
+};
+
+const monthLabel = (d: Date) =>
+    d.toLocaleString("en-US", { month: "short", year: "numeric" });
+
+// Build one PREVIOUS_DUE line item per unpaid source invoice. The source
+// invoice id is embedded in the description as a `[id:<uuid>]` tag so the
+// frontend can link each line back to the invoice it carried over from.
+// Keep this tag format in sync with the parser on the invoice detail page.
+const buildPreviousDueLineItems = (
+    sources: UnpaidSource[],
+): LineItemInput[] =>
+    sources
+        .filter((s) => new Prisma.Decimal(s.dueAmount).gt(0))
+        .map((s) => ({
+            category: LineItemCategory.PREVIOUS_DUE,
+            description: `Previous due · ${s.invoiceNumber} (${monthLabel(
+                s.billingMonth,
+            )}) [id:${s.id}]`,
+            amount: new Prisma.Decimal(s.dueAmount),
+        }));
+
 const validateBillingMonth = (billingMonth: Date, lease: LeaseForInvoice) => {
     const now = new Date();
     const currentMonth = monthStart(now);
@@ -257,17 +284,27 @@ const generateOne = async (
     );
     const utility = utilityFromItems.add(legacyUtility);
 
-    // Carry forward any unpaid balance from previous invoices of this lease
+    // Carry forward any unpaid balance from previous invoices of this lease.
+    // One PREVIOUS_DUE line item is emitted per source invoice so the new
+    // invoice records exactly which older invoices it absorbed — the frontend
+    // links each line back to its source.
     const unpaidInvoices = await prisma.invoice.findMany({
         where: {
             leaseId: lease.id,
             billingMonth: { lt: billingMonth },
             status: { in: [PaymentStatus.PARTIAL, PaymentStatus.DUE, PaymentStatus.OVERDUE] },
         },
-        select: { dueAmount: true },
+        select: {
+            id: true,
+            invoiceNumber: true,
+            billingMonth: true,
+            dueAmount: true,
+        },
+        orderBy: { billingMonth: "asc" },
     });
-    const previousDue = unpaidInvoices.reduce(
-        (sum, inv) => sum.add(inv.dueAmount),
+    const previousDueItems = buildPreviousDueLineItems(unpaidInvoices);
+    const previousDue = previousDueItems.reduce(
+        (sum, item) => sum.add(item.amount),
         new Prisma.Decimal(0),
     );
 
@@ -320,15 +357,7 @@ const generateOne = async (
                   },
               ]
             : []),
-        ...(previousDue.gt(0)
-            ? [
-                  {
-                      category: LineItemCategory.PREVIOUS_DUE,
-                      description: "Previous Outstanding Balance",
-                      amount: previousDue,
-                  },
-              ]
-            : []),
+        ...previousDueItems,
     ];
 
     return prisma.invoice.create({
@@ -421,17 +450,26 @@ const generateMonthlyBatch = async (
             new Prisma.Decimal(0),
         );
 
-        // Carry forward any unpaid balance from previous invoices of this lease
+        // Carry forward any unpaid balance from previous invoices of this
+        // lease — one PREVIOUS_DUE line item per source invoice (see
+        // buildPreviousDueLineItems).
         const unpaidInvoices = await prisma.invoice.findMany({
             where: {
                 leaseId: lease.id,
                 billingMonth: { lt: billingMonth },
                 status: { in: [PaymentStatus.PARTIAL, PaymentStatus.DUE, PaymentStatus.OVERDUE] },
             },
-            select: { dueAmount: true },
+            select: {
+                id: true,
+                invoiceNumber: true,
+                billingMonth: true,
+                dueAmount: true,
+            },
+            orderBy: { billingMonth: "asc" },
         });
-        const previousDue = unpaidInvoices.reduce(
-            (sum, inv) => sum.add(inv.dueAmount),
+        const previousDueItems = buildPreviousDueLineItems(unpaidInvoices);
+        const previousDue = previousDueItems.reduce(
+            (sum, item) => sum.add(item.amount),
             new Prisma.Decimal(0),
         );
 
@@ -477,15 +515,7 @@ const generateMonthlyBatch = async (
                               ]
                             : []),
                         ...utilities,
-                        ...(previousDue.gt(0)
-                            ? [
-                                  {
-                                      category: LineItemCategory.PREVIOUS_DUE,
-                                      description: "Previous Outstanding Balance",
-                                      amount: previousDue,
-                                  },
-                              ]
-                            : []),
+                        ...previousDueItems,
                     ],
                 },
             },
