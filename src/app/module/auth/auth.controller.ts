@@ -212,10 +212,6 @@ const googleLoginSuccess = catchAsync(async (req: Request, res: Response) => {
     const redirectPath = (req.query.redirect as string) || "/dashboard";
     const sessionToken = CookieUtils.getSessionToken(req);
 
-    // TEMP DEBUG: log what cookies actually arrive at google/success in prod
-    console.log("[google/success] cookie names:", Object.keys(req.cookies || {}));
-    console.log("[google/success] sessionToken found:", Boolean(sessionToken));
-
     if (!sessionToken) {
         return res.redirect(
             `${envVars.FRONTEND_URL}/login?error=oauth_failed`,
@@ -243,14 +239,26 @@ const googleLoginSuccess = catchAsync(async (req: Request, res: Response) => {
     const result = await AuthService.googleLoginSuccess(session);
     const { accessToken, refreshToken } = result;
 
-    tokenUtils.setAccessTokenCookie(res, accessToken);
-    tokenUtils.setRefreshTokenCookie(res, refreshToken);
-
     const isValidRedirectPath =
         redirectPath.startsWith("/") && !redirectPath.startsWith("//");
     const finalRedirectPath = isValidRedirectPath ? redirectPath : "/dashboard";
 
-    res.redirect(`${envVars.FRONTEND_URL}${finalRedirectPath}`);
+    // Frontend and backend are on different domains, so cookies set here land on
+    // the backend's domain and the frontend's middleware never sees them. Mirror
+    // the email/password flow instead: hand the tokens to a frontend callback
+    // route, which re-sets them as httpOnly cookies on *its* own domain.
+    const callbackUrl = new URL(`${envVars.FRONTEND_URL}/auth/google/callback`);
+    callbackUrl.searchParams.set("accessToken", accessToken);
+    callbackUrl.searchParams.set("refreshToken", refreshToken);
+    // The Better Auth session token the frontend stores as
+    // `better-auth.session_token` (raw value, signature stripped).
+    callbackUrl.searchParams.set(
+        "sessionToken",
+        sessionToken.includes(".") ? sessionToken.split(".")[0] : sessionToken,
+    );
+    callbackUrl.searchParams.set("redirect", finalRedirectPath);
+
+    res.redirect(callbackUrl.toString());
 });
 
 const handleOAuthError = catchAsync((req: Request, res: Response) => {
