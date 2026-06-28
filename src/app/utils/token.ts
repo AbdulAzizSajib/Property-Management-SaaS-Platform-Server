@@ -24,7 +24,7 @@ const getRefreshToken = (payload: JwtPayload) => {
     );
     return refreshToken;
 }
-// data
+
 
 
 const setAccessTokenCookie = (res: Response, token: string) => {
