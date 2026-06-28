@@ -14,11 +14,13 @@ export const generateInvoiceZodSchema = z.object({
         })
         .optional(),
     penaltyAmount: z.number().min(0).optional(),
+    carryForwardInvoiceIds: z.array(z.string().min(1)).optional(),
     notes: z.string().max(500).optional(),
 });
 
 export const generateMonthlyZodSchema = z.object({
     billingMonth: z.iso.datetime().or(z.iso.date()),
+    carryForward: z.boolean().optional(),
 });
 
 export const updateInvoiceZodSchema = z.object({

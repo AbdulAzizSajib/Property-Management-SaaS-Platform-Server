@@ -19,6 +19,14 @@ model Invoice {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
+  // Carry-forward link. When this invoice's unpaid balance is rolled into a
+  // newer invoice, its status becomes CARRIED_FORWARD and these fields point to
+  // the invoice that absorbed it — letting us reverse the roll-up on cancel.
+  carriedForwardToId String?
+  carriedForwardTo   Invoice?  @relation("CarryForward", fields: [carriedForwardToId], references: [id], onDelete: SetNull)
+  carriedForwardFrom Invoice[] @relation("CarryForward")
+  carriedForwardAt   DateTime?
+
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
@@ -38,4 +46,5 @@ model Invoice {
   @@index([leaseId])
   @@index([status])
   @@index([billingMonth])
+  @@index([carriedForwardToId])
 }

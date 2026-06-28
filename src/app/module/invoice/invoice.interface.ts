@@ -14,11 +14,19 @@ export interface IGenerateInvoicePayload {
         internet?: number;
     };
     penaltyAmount?: number;
+    // Which earlier unpaid invoices of this lease to roll into this one.
+    // Omit or pass [] to NOT carry any previous due — the invoice will then
+    // only contain the current month's charges. Each id must be an outstanding
+    // (DUE/PARTIAL/OVERDUE) earlier invoice of the same lease.
+    carryForwardInvoiceIds?: string[];
     notes?: string;
 }
 
 export interface IGenerateMonthlyPayload {
     billingMonth: string;
+    // Bulk run defaults to carrying every outstanding balance forward. Pass
+    // false to generate plain current-month invoices without any carry-over.
+    carryForward?: boolean;
 }
 
 export interface IInvoiceQuery {

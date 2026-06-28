@@ -49,6 +49,56 @@ const computeDueDate = (billingMonth: Date, rentDueDay: number) => {
     return new Date(billingMonth.getFullYear(), billingMonth.getMonth(), safeDay);
 };
 
+// Active statuses that still represent money owed (and so can be carried forward).
+const OWED_STATUSES = [
+    PaymentStatus.PARTIAL,
+    PaymentStatus.DUE,
+    PaymentStatus.OVERDUE,
+] as const;
+
+// Derive the correct status for an invoice from its numbers. Used when
+// restoring an invoice whose carry-forward is being reversed.
+const deriveStatus = (
+    due: Prisma.Decimal,
+    paid: Prisma.Decimal,
+    dueDate: Date,
+    now: Date,
+): PaymentStatus => {
+    if (due.lte(0)) return PaymentStatus.PAID;
+    if (paid.gt(0)) return PaymentStatus.PARTIAL;
+    return dueDate < now ? PaymentStatus.OVERDUE : PaymentStatus.DUE;
+};
+
+type CarriedSource = {
+    id: string;
+    totalAmount: Prisma.Decimal;
+    paidAmount: Prisma.Decimal;
+    dueDate: Date;
+};
+
+// Reverse a carry-forward: each source invoice gets its own unpaid balance back
+// and is detached from the (now cancelled/deleted) invoice that had absorbed it.
+const restoreCarriedForwardSources = async (
+    tx: Prisma.TransactionClient,
+    sources: CarriedSource[],
+    now: Date,
+) => {
+    for (const src of sources) {
+        const paid = new Prisma.Decimal(src.paidAmount);
+        const due = new Prisma.Decimal(src.totalAmount).sub(paid);
+        const restored = due.lessThan(0) ? new Prisma.Decimal(0) : due;
+        await tx.invoice.update({
+            where: { id: src.id },
+            data: {
+                status: deriveStatus(restored, paid, src.dueDate, now),
+                dueAmount: restored,
+                carriedForwardToId: null,
+                carriedForwardAt: null,
+            },
+        });
+    }
+};
+
 type LeaseForInvoice = {
     id: string;
     organizationId: string;
@@ -288,11 +338,11 @@ const generateOne = async (
     // One PREVIOUS_DUE line item is emitted per source invoice so the new
     // invoice records exactly which older invoices it absorbed — the frontend
     // links each line back to its source.
-    const unpaidInvoices = await prisma.invoice.findMany({
+    const owedPrevious = await prisma.invoice.findMany({
         where: {
             leaseId: lease.id,
             billingMonth: { lt: billingMonth },
-            status: { in: [PaymentStatus.PARTIAL, PaymentStatus.DUE, PaymentStatus.OVERDUE] },
+            status: { in: [...OWED_STATUSES] },
         },
         select: {
             id: true,
@@ -302,7 +352,29 @@ const generateOne = async (
         },
         orderBy: { billingMonth: "asc" },
     });
-    const previousDueItems = buildPreviousDueLineItems(unpaidInvoices);
+
+    // Carry forward is opt-in: only the invoices the owner explicitly selected
+    // are rolled in. Nothing selected → a plain current-month invoice, and the
+    // older dues keep showing as their own outstanding invoices.
+    const selectedIds = payload.carryForwardInvoiceIds ?? [];
+    let sourcesToCarry = owedPrevious;
+    if (selectedIds.length === 0) {
+        sourcesToCarry = [];
+    } else {
+        const owedById = new Map(owedPrevious.map((i) => [i.id, i]));
+        const invalid = selectedIds.filter((id) => !owedById.has(id));
+        if (invalid.length) {
+            throw new AppError(
+                status.BAD_REQUEST,
+                `Cannot carry forward these invoices — they are not outstanding earlier invoices of this lease: ${invalid.join(", ")}`,
+            );
+        }
+        sourcesToCarry = selectedIds
+            .map((id) => owedById.get(id)!)
+            .filter((s) => new Prisma.Decimal(s.dueAmount).gt(0));
+    }
+
+    const previousDueItems = buildPreviousDueLineItems(sourcesToCarry);
     const previousDue = previousDueItems.reduce(
         (sum, item) => sum.add(item.amount),
         new Prisma.Decimal(0),
@@ -360,26 +432,47 @@ const generateOne = async (
         ...previousDueItems,
     ];
 
-    return prisma.invoice.create({
-        data: {
-            invoiceNumber: generateInvoiceNumber(organizationId),
-            type: InvoiceType.RENT,
-            status: PaymentStatus.DUE,
-            billingMonth,
-            dueDate,
-            rentAmount: rent,
-            serviceCharge,
-            utilityAmount: utility,
-            penaltyAmount: penalty,
-            totalAmount: total,
-            dueAmount: total,
-            notes: payload.notes,
-            organizationId,
-            leaseId: lease.id,
-            unitId: lease.unitId,
-            tenantId: lease.tenantId,
-            lineItems: { create: lineItems },
-        },
+    const now = new Date();
+
+    // Create the invoice and, in the same transaction, mark every source
+    // invoice as CARRIED_FORWARD so its balance is no longer counted twice.
+    // The debt now lives only on this new invoice.
+    return prisma.$transaction(async (tx) => {
+        const created = await tx.invoice.create({
+            data: {
+                invoiceNumber: generateInvoiceNumber(organizationId),
+                type: InvoiceType.RENT,
+                status: PaymentStatus.DUE,
+                billingMonth,
+                dueDate,
+                rentAmount: rent,
+                serviceCharge,
+                utilityAmount: utility,
+                penaltyAmount: penalty,
+                totalAmount: total,
+                dueAmount: total,
+                notes: payload.notes,
+                organizationId,
+                leaseId: lease.id,
+                unitId: lease.unitId,
+                tenantId: lease.tenantId,
+                lineItems: { create: lineItems },
+            },
+        });
+
+        if (sourcesToCarry.length > 0) {
+            await tx.invoice.updateMany({
+                where: { id: { in: sourcesToCarry.map((s) => s.id) } },
+                data: {
+                    status: PaymentStatus.CARRIED_FORWARD,
+                    dueAmount: new Prisma.Decimal(0),
+                    carriedForwardToId: created.id,
+                    carriedForwardAt: now,
+                },
+            });
+        }
+
+        return created;
     });
 };
 
@@ -389,6 +482,8 @@ const generateMonthlyBatch = async (
 ) => {
     const organizationId = assertOrg(user);
     const billingMonth = monthStart(new Date(payload.billingMonth));
+    // Bulk run carries every outstanding balance forward unless told otherwise.
+    const carryForward = payload.carryForward !== false;
 
     // Date sanity for the batch as a whole
     const now = new Date();
@@ -453,21 +548,26 @@ const generateMonthlyBatch = async (
         // Carry forward any unpaid balance from previous invoices of this
         // lease — one PREVIOUS_DUE line item per source invoice (see
         // buildPreviousDueLineItems).
-        const unpaidInvoices = await prisma.invoice.findMany({
-            where: {
-                leaseId: lease.id,
-                billingMonth: { lt: billingMonth },
-                status: { in: [PaymentStatus.PARTIAL, PaymentStatus.DUE, PaymentStatus.OVERDUE] },
-            },
-            select: {
-                id: true,
-                invoiceNumber: true,
-                billingMonth: true,
-                dueAmount: true,
-            },
-            orderBy: { billingMonth: "asc" },
-        });
-        const previousDueItems = buildPreviousDueLineItems(unpaidInvoices);
+        const unpaidInvoices = carryForward
+            ? await prisma.invoice.findMany({
+                  where: {
+                      leaseId: lease.id,
+                      billingMonth: { lt: billingMonth },
+                      status: { in: [...OWED_STATUSES] },
+                  },
+                  select: {
+                      id: true,
+                      invoiceNumber: true,
+                      billingMonth: true,
+                      dueAmount: true,
+                  },
+                  orderBy: { billingMonth: "asc" },
+              })
+            : [];
+        const sourcesToCarry = unpaidInvoices.filter((s) =>
+            new Prisma.Decimal(s.dueAmount).gt(0),
+        );
+        const previousDueItems = buildPreviousDueLineItems(sourcesToCarry);
         const previousDue = previousDueItems.reduce(
             (sum, item) => sum.add(item.amount),
             new Prisma.Decimal(0),
@@ -481,44 +581,61 @@ const generateMonthlyBatch = async (
         }
 
         const dueDate = computeDueDate(billingMonth, lease.rentDueDay);
+        const now = new Date();
 
-        const inv = await prisma.invoice.create({
-            data: {
-                invoiceNumber: generateInvoiceNumber(organizationId),
-                type: InvoiceType.RENT,
-                status: PaymentStatus.DUE,
-                billingMonth,
-                dueDate,
-                rentAmount: rent,
-                serviceCharge: sc,
-                utilityAmount: utilityTotal,
-                totalAmount: total,
-                dueAmount: total,
-                organizationId,
-                leaseId: lease.id,
-                unitId: lease.unitId,
-                tenantId: lease.tenantId,
-                lineItems: {
-                    create: [
-                        {
-                            category: LineItemCategory.RENT,
-                            description: "Monthly Rent",
-                            amount: rent,
-                        },
-                        ...(sc.gt(0)
-                            ? [
-                                  {
-                                      category: LineItemCategory.SERVICE_CHARGE,
-                                      description: "Service Charge",
-                                      amount: sc,
-                                  },
-                              ]
-                            : []),
-                        ...utilities,
-                        ...previousDueItems,
-                    ],
+        const inv = await prisma.$transaction(async (tx) => {
+            const createdInv = await tx.invoice.create({
+                data: {
+                    invoiceNumber: generateInvoiceNumber(organizationId),
+                    type: InvoiceType.RENT,
+                    status: PaymentStatus.DUE,
+                    billingMonth,
+                    dueDate,
+                    rentAmount: rent,
+                    serviceCharge: sc,
+                    utilityAmount: utilityTotal,
+                    totalAmount: total,
+                    dueAmount: total,
+                    organizationId,
+                    leaseId: lease.id,
+                    unitId: lease.unitId,
+                    tenantId: lease.tenantId,
+                    lineItems: {
+                        create: [
+                            {
+                                category: LineItemCategory.RENT,
+                                description: "Monthly Rent",
+                                amount: rent,
+                            },
+                            ...(sc.gt(0)
+                                ? [
+                                      {
+                                          category: LineItemCategory.SERVICE_CHARGE,
+                                          description: "Service Charge",
+                                          amount: sc,
+                                      },
+                                  ]
+                                : []),
+                            ...utilities,
+                            ...previousDueItems,
+                        ],
+                    },
                 },
-            },
+            });
+
+            if (sourcesToCarry.length > 0) {
+                await tx.invoice.updateMany({
+                    where: { id: { in: sourcesToCarry.map((s) => s.id) } },
+                    data: {
+                        status: PaymentStatus.CARRIED_FORWARD,
+                        dueAmount: new Prisma.Decimal(0),
+                        carriedForwardToId: createdInv.id,
+                        carriedForwardAt: now,
+                    },
+                });
+            }
+
+            return createdInv;
         });
         created.push(inv.id);
     }
@@ -603,6 +720,11 @@ const getAllInvoices = async (user: IRequestUser, query: IInvoiceQuery) => {
                     building: { select: { id: true, name: true } },
                 },
             },
+            // So the list can show "Carried forward → INV-…" instead of a
+            // misleading "Fully paid" on CARRIED_FORWARD rows.
+            carriedForwardTo: {
+                select: { id: true, invoiceNumber: true, billingMonth: true },
+            },
         },
         orderBy,
     });
@@ -619,6 +741,25 @@ const getInvoiceById = async (user: IRequestUser, id: string) => {
             lease: true,
             payments: { orderBy: { paidAt: "desc" } },
             lineItems: true,
+            // The newer invoice this one's balance was rolled into (if any)...
+            carriedForwardTo: {
+                select: {
+                    id: true,
+                    invoiceNumber: true,
+                    billingMonth: true,
+                    status: true,
+                },
+            },
+            // ...and the older invoices whose balances this one absorbed.
+            carriedForwardFrom: {
+                select: {
+                    id: true,
+                    invoiceNumber: true,
+                    billingMonth: true,
+                    totalAmount: true,
+                    paidAmount: true,
+                },
+            },
         },
     });
 
@@ -656,6 +797,13 @@ const updateInvoice = async (
         throw new AppError(
             status.BAD_REQUEST,
             "Cannot edit a cancelled invoice",
+        );
+    }
+
+    if (invoice.status === PaymentStatus.CARRIED_FORWARD) {
+        throw new AppError(
+            status.BAD_REQUEST,
+            "This invoice's balance was carried into a newer invoice. Edit the newer invoice instead.",
         );
     }
 
@@ -826,7 +974,7 @@ const cancelInvoice = async (
 
     const invoice = await prisma.invoice.findFirst({
         where: { id, organizationId },
-        include: { payments: true },
+        include: { payments: true, carriedForwardFrom: true },
     });
 
     if (!invoice) {
@@ -835,6 +983,13 @@ const cancelInvoice = async (
 
     if (invoice.status === PaymentStatus.CANCELLED) {
         throw new AppError(status.BAD_REQUEST, "Invoice already cancelled");
+    }
+
+    if (invoice.status === PaymentStatus.CARRIED_FORWARD) {
+        throw new AppError(
+            status.BAD_REQUEST,
+            "This invoice's balance was carried into a newer invoice. Cancel the newer invoice first.",
+        );
     }
 
     if (invoice.status === PaymentStatus.PAID) {
@@ -851,14 +1006,22 @@ const cancelInvoice = async (
         );
     }
 
-    return prisma.invoice.update({
-        where: { id },
-        data: {
-            status: PaymentStatus.CANCELLED,
-            cancelledAt: new Date(),
-            cancelReason: payload.reason,
-            dueAmount: new Prisma.Decimal(0),
-        },
+    const now = new Date();
+
+    // Cancelling an invoice that absorbed previous dues must hand those dues
+    // back to their source invoices, otherwise the carried balance vanishes.
+    return prisma.$transaction(async (tx) => {
+        await restoreCarriedForwardSources(tx, invoice.carriedForwardFrom, now);
+
+        return tx.invoice.update({
+            where: { id },
+            data: {
+                status: PaymentStatus.CANCELLED,
+                cancelledAt: now,
+                cancelReason: payload.reason,
+                dueAmount: new Prisma.Decimal(0),
+            },
+        });
     });
 };
 
@@ -872,7 +1035,7 @@ const deleteInvoice = async (user: IRequestUser, id: string) => {
 
     const invoice = await prisma.invoice.findUnique({
         where: { id },
-        include: { payments: true },
+        include: { payments: true, carriedForwardFrom: true },
     });
 
     if (!invoice) {
@@ -896,7 +1059,14 @@ const deleteInvoice = async (user: IRequestUser, id: string) => {
         );
     }
 
-    await prisma.invoice.delete({ where: { id } });
+    const now = new Date();
+
+    // Hand any absorbed previous dues back to their sources before deleting,
+    // so the carried balance is not silently lost.
+    await prisma.$transaction(async (tx) => {
+        await restoreCarriedForwardSources(tx, invoice.carriedForwardFrom, now);
+        await tx.invoice.delete({ where: { id } });
+    });
 
     return { id, deleted: true };
 };

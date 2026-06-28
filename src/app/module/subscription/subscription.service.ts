@@ -114,9 +114,83 @@ const getMySubscription = async (user: IRequestUser) => {
         throw new AppError(status.NOT_FOUND, "Subscription not found");
     }
 
-    return subscription;
+    // Current usage against the plan limits — lets the UI show "used / limit"
+    // (sidebar footer, subscription page) without a second request.
+    const orgId = user.organizationId;
+    const [planConfig, buildings, floors, units, tenants] = await Promise.all([
+        prisma.planConfig.findUnique({ where: { plan: subscription.plan } }),
+        prisma.building.count({ where: { organizationId: orgId } }),
+        prisma.floor.count({ where: { building: { organizationId: orgId } } }),
+        prisma.unit.count({ where: { building: { organizationId: orgId } } }),
+        prisma.tenant.count({ where: { organizationId: orgId } }),
+    ]);
+
+    return {
+        ...subscription,
+        planName: planConfig?.displayName ?? subscription.plan,
+        usage: { buildings, floors, units, tenants },
+    };
 };
 
+// Apply a plan change to an organization after enforcing that current usage
+// fits within the target plan's limits. Shared by the FREE-downgrade path and
+// the admin approval of a paid payment request.
+const applyPlanChange = async (
+    organizationId: string,
+    plan: SubscriptionPlan,
+) => {
+    const existing = await prisma.subscription.findUnique({
+        where: { organizationId },
+    });
+    if (!existing) {
+        throw new AppError(status.NOT_FOUND, "Subscription not found");
+    }
+
+    const targetPreset = await getPlanConfig(plan);
+    const [buildingCount, floorCount, unitCount, tenantCount] =
+        await Promise.all([
+            prisma.building.count({ where: { organizationId } }),
+            prisma.floor.count({
+                where: { building: { organizationId } },
+            }),
+            prisma.unit.count({ where: { building: { organizationId } } }),
+            prisma.tenant.count({ where: { organizationId } }),
+        ]);
+
+    if (buildingCount > targetPreset.buildingLimit) {
+        throw new AppError(
+            status.BAD_REQUEST,
+            `Cannot switch: ${buildingCount} buildings exceed the ${targetPreset.displayName} plan limit of ${targetPreset.buildingLimit}`,
+        );
+    }
+    if (floorCount > targetPreset.floorLimit) {
+        throw new AppError(
+            status.BAD_REQUEST,
+            `Cannot switch: ${floorCount} floors exceed the ${targetPreset.displayName} plan limit of ${targetPreset.floorLimit}`,
+        );
+    }
+    if (unitCount > targetPreset.unitLimit) {
+        throw new AppError(
+            status.BAD_REQUEST,
+            `Cannot switch: ${unitCount} units exceed the ${targetPreset.displayName} plan limit of ${targetPreset.unitLimit}`,
+        );
+    }
+    if (tenantCount > targetPreset.tenantLimit) {
+        throw new AppError(
+            status.BAD_REQUEST,
+            `Cannot switch: ${tenantCount} tenants exceed the ${targetPreset.displayName} plan limit of ${targetPreset.tenantLimit}`,
+        );
+    }
+
+    const data = await buildSubscriptionData(plan);
+    return prisma.subscription.update({
+        where: { organizationId },
+        data,
+    });
+};
+
+// Owners can only switch DOWN to the free plan directly. Activating a paid plan
+// requires a verified payment, handled by the subscription-request flow.
 const changePlan = async (user: IRequestUser, payload: IChangePlanPayload) => {
     if (!user.organizationId) {
         throw new AppError(
@@ -125,60 +199,27 @@ const changePlan = async (user: IRequestUser, payload: IChangePlanPayload) => {
         );
     }
 
+    if (payload.plan !== SubscriptionPlan.FREE) {
+        throw new AppError(
+            status.BAD_REQUEST,
+            "Paid plans require a verified payment. Submit a payment request from the subscription page.",
+        );
+    }
+
     const existing = await prisma.subscription.findUnique({
         where: { organizationId: user.organizationId },
     });
-
     if (!existing) {
         throw new AppError(status.NOT_FOUND, "Subscription not found");
     }
-
-    if (existing.plan === payload.plan && existing.status === SubscriptionStatus.ACTIVE) {
-        throw new AppError(status.BAD_REQUEST, `Already on ${payload.plan} plan`);
+    if (
+        existing.plan === SubscriptionPlan.FREE &&
+        existing.status === SubscriptionStatus.ACTIVE
+    ) {
+        throw new AppError(status.BAD_REQUEST, "Already on the Free plan");
     }
 
-    const targetPreset = await getPlanConfig(payload.plan);
-    const [buildingCount, floorCount, unitCount, tenantCount] = await Promise.all([
-        prisma.building.count({ where: { organizationId: user.organizationId } }),
-        prisma.floor.count({
-            where: { building: { organizationId: user.organizationId } },
-        }),
-        prisma.unit.count({
-            where: { building: { organizationId: user.organizationId } },
-        }),
-        prisma.tenant.count({ where: { organizationId: user.organizationId } }),
-    ]);
-
-    if (buildingCount > targetPreset.buildingLimit) {
-        throw new AppError(
-            status.BAD_REQUEST,
-            `Cannot downgrade: you have ${buildingCount} buildings but the ${targetPreset.displayName} plan allows ${targetPreset.buildingLimit}`,
-        );
-    }
-    if (floorCount > targetPreset.floorLimit) {
-        throw new AppError(
-            status.BAD_REQUEST,
-            `Cannot downgrade: you have ${floorCount} floors but the ${targetPreset.displayName} plan allows ${targetPreset.floorLimit}`,
-        );
-    }
-    if (unitCount > targetPreset.unitLimit) {
-        throw new AppError(
-            status.BAD_REQUEST,
-            `Cannot downgrade: you have ${unitCount} units but the ${targetPreset.displayName} plan allows ${targetPreset.unitLimit}`,
-        );
-    }
-    if (tenantCount > targetPreset.tenantLimit) {
-        throw new AppError(
-            status.BAD_REQUEST,
-            `Cannot downgrade: you have ${tenantCount} tenants but the ${targetPreset.displayName} plan allows ${targetPreset.tenantLimit}`,
-        );
-    }
-
-    const data = await buildSubscriptionData(payload.plan);
-    return prisma.subscription.update({
-        where: { organizationId: user.organizationId },
-        data,
-    });
+    return applyPlanChange(user.organizationId, SubscriptionPlan.FREE);
 };
 
 const cancelSubscription = async (user: IRequestUser) => {
@@ -299,6 +340,8 @@ export const SubscriptionService = {
     getAllPlans,
     getMySubscription,
     changePlan,
+    applyPlanChange,
+    getPlanConfig,
     cancelSubscription,
     reactivateSubscription,
     listAllSubscriptions,

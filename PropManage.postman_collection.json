@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Property Management SaaS",
-    "description": "Postman collection for Property Management SaaS backend (auth, users, admins, organizations, subscriptions, buildings, floors, units, tenants, leases, invoices, payments). Base URL is set via the `baseUrl` collection variable. After /login the access token is captured to `{{accessToken}}` automatically.",
+    "description": "Postman collection for Property Management SaaS backend (auth, users, admins, organizations, subscriptions, plan-configs, buildings, floors, units, tenants, leases, invoices, payments, expenses, complaints, documents, rent-agreements, rent-increases, dashboard, reports, notifications, activity-logs). Base URL is set via the `baseUrl` collection variable. After /login the access token is captured to `{{accessToken}}` automatically.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_postman_id": "0a3a9c2c-3e0b-4d7e-9c1b-1f1f1f1f1f1f"
   },
@@ -20,6 +20,8 @@
     { "key": "paymentId", "value": "", "type": "string" },
     { "key": "caretakerId", "value": "", "type": "string" },
     { "key": "organizationId", "value": "", "type": "string" },
+    { "key": "adminId", "value": "", "type": "string" },
+    { "key": "planConfigId", "value": "", "type": "string" },
     { "key": "expenseId", "value": "", "type": "string" },
     { "key": "complaintId", "value": "", "type": "string" },
     { "key": "documentId", "value": "", "type": "string" },
@@ -373,6 +375,48 @@
       ]
     },
     {
+      "name": "Admins",
+      "item": [
+        {
+          "name": "Get All Admins",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/admins", "host": ["{{baseUrl}}"], "path": ["admins"] },
+            "description": "Allowed: ADMIN, SUPER_ADMIN. Returns all platform admin accounts."
+          }
+        },
+        {
+          "name": "Get Admin By Id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/admins/{{adminId}}", "host": ["{{baseUrl}}"], "path": ["admins", "{{adminId}}"] },
+            "description": "Allowed: ADMIN, SUPER_ADMIN."
+          }
+        },
+        {
+          "name": "Update Admin",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/admins/{{adminId}}", "host": ["{{baseUrl}}"], "path": ["admins", "{{adminId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"admin\": {\n    \"name\": \"Platform Admin (Updated)\",\n    \"contactNumber\": \"01711000999\",\n    \"profilePhoto\": \"https://example.com/admin.png\"\n  }\n}"
+            },
+            "description": "Allowed: SUPER_ADMIN only. All fields under `admin` are optional."
+          }
+        },
+        {
+          "name": "Delete Admin",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/admins/{{adminId}}", "host": ["{{baseUrl}}"], "path": ["admins", "{{adminId}}"] },
+            "description": "Allowed: SUPER_ADMIN only."
+          }
+        }
+      ]
+    },
+    {
       "name": "Organizations",
       "item": [
         {
@@ -466,6 +510,99 @@
               "raw": "{\n  \"plan\": \"BUSINESS\",\n  \"status\": \"ACTIVE\"\n}"
             },
             "description": "Allowed: SUPER_ADMIN only. Manually override a subscription for any organization."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Plan Configs",
+      "item": [
+        {
+          "name": "Get All Plan Configs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  const id = json?.data?.[0]?.id;",
+                  "  if (id) pm.collectionVariables.set('planConfigId', id);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/plan-configs", "host": ["{{baseUrl}}"], "path": ["plan-configs"] },
+            "description": "Allowed: SUPER_ADMIN only. Returns all plan configurations (limits, pricing, features). Captures first id to {{planConfigId}}."
+          }
+        },
+        {
+          "name": "Get Plan Config By Plan",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/plan-configs/by-plan/STANDARD", "host": ["{{baseUrl}}"], "path": ["plan-configs", "by-plan", "STANDARD"] },
+            "description": "Allowed: SUPER_ADMIN only. `plan` path param must be one of FREE, BASIC, STANDARD, BUSINESS."
+          }
+        },
+        {
+          "name": "Get Plan Config By Id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/plan-configs/{{planConfigId}}", "host": ["{{baseUrl}}"], "path": ["plan-configs", "{{planConfigId}}"] },
+            "description": "Allowed: SUPER_ADMIN only."
+          }
+        },
+        {
+          "name": "Create Plan Config",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  const id = json?.data?.id;",
+                  "  if (id) pm.collectionVariables.set('planConfigId', id);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/plan-configs", "host": ["{{baseUrl}}"], "path": ["plan-configs"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"plan\": \"STANDARD\",\n  \"displayName\": \"Standard\",\n  \"description\": \"For growing property managers\",\n  \"buildingLimit\": 10,\n  \"floorLimit\": 50,\n  \"unitLimit\": 200,\n  \"tenantLimit\": 200,\n  \"smsEnabled\": true,\n  \"customBranding\": false,\n  \"multiAdmin\": true,\n  \"priceMonthly\": 2500,\n  \"trialDays\": 14,\n  \"isPopular\": true,\n  \"features\": [\"Up to 200 units\", \"SMS reminders\", \"Multiple admins\"],\n  \"isActive\": true\n}"
+            },
+            "description": "Allowed: SUPER_ADMIN only. `plan` must be one of FREE, BASIC, STANDARD, BUSINESS. Limits, priceMonthly required; smsEnabled/customBranding/multiAdmin/trialDays/isPopular/isActive optional. Captures created id to {{planConfigId}}."
+          }
+        },
+        {
+          "name": "Update Plan Config",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/plan-configs/{{planConfigId}}", "host": ["{{baseUrl}}"], "path": ["plan-configs", "{{planConfigId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"priceMonthly\": 3000,\n  \"unitLimit\": 250,\n  \"features\": [\"Up to 250 units\", \"SMS reminders\", \"Multiple admins\", \"Priority support\"]\n}"
+            },
+            "description": "Allowed: SUPER_ADMIN only. All fields optional. `plan` cannot be changed."
+          }
+        },
+        {
+          "name": "Delete Plan Config",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/plan-configs/{{planConfigId}}", "host": ["{{baseUrl}}"], "path": ["plan-configs", "{{planConfigId}}"] },
+            "description": "Allowed: SUPER_ADMIN only."
           }
         }
       ]

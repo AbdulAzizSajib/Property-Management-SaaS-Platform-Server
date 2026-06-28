@@ -3,10 +3,7 @@ import { Role } from "../../../generated/prisma/enums";
 import { checkAuth } from "../../middleware/checkAuth";
 import { validateRequest } from "../../middleware/validateRequest";
 import { PlanConfigController } from "./planConfig.controller";
-import {
-    createPlanConfigZodSchema,
-    updatePlanConfigZodSchema,
-} from "./planConfig.validation";
+import { updatePlanConfigZodSchema } from "./planConfig.validation";
 
 const router = Router();
 
@@ -28,24 +25,13 @@ router.get(
     PlanConfigController.getPlanConfigById,
 );
 
-router.post(
-    "/",
-    checkAuth(Role.SUPER_ADMIN),
-    validateRequest(createPlanConfigZodSchema),
-    PlanConfigController.createPlanConfig,
-);
-
+// Plans are enum-bound (FREE/BASIC/STANDARD/BUSINESS) and seeded once on a
+// fresh DB, so there is no create/delete — only edit price/limits/features.
 router.patch(
     "/:id",
     checkAuth(Role.SUPER_ADMIN),
     validateRequest(updatePlanConfigZodSchema),
     PlanConfigController.updatePlanConfig,
-);
-
-router.delete(
-    "/:id",
-    checkAuth(Role.SUPER_ADMIN),
-    PlanConfigController.deletePlanConfig,
 );
 
 export const PlanConfigRoutes = router;

@@ -20,4 +20,11 @@ router.get(
     DashboardController.getOccupancy,
 );
 
+router.get(
+    "/overview",
+    checkAuth(Role.OWNER, Role.MANAGER),
+    requireActiveOrg,
+    DashboardController.getOverview,
+);
+
 export const DashboardRoutes = router;

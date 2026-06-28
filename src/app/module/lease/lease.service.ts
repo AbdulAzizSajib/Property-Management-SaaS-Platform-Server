@@ -203,7 +203,7 @@ const createLease = async (
 const getAllLeases = async (user: IRequestUser) => {
     const organizationId = assertOrg(user);
 
-    return prisma.lease.findMany({
+    const leases = await prisma.lease.findMany({
         where: { organizationId },
         include: {
             tenant: { select: { id: true, name: true, phone: true } },
@@ -216,6 +216,38 @@ const getAllLeases = async (user: IRequestUser) => {
             },
         },
         orderBy: { createdAt: "desc" },
+    });
+
+    // Outstanding (unpaid) due aggregated per lease in a single query.
+    const dueByLease = await prisma.invoice.groupBy({
+        by: ["leaseId"],
+        where: {
+            organizationId,
+            status: { in: [PaymentStatus.DUE, PaymentStatus.PARTIAL] },
+        },
+        _sum: { dueAmount: true },
+        _count: { _all: true },
+    });
+
+    const dueMap = new Map(
+        dueByLease.map((row) => [
+            row.leaseId,
+            {
+                totalDue: row._sum.dueAmount ?? new Prisma.Decimal(0),
+                dueInvoiceCount: row._count._all,
+            },
+        ]),
+    );
+
+    return leases.map((lease) => {
+        const due = dueMap.get(lease.id);
+        const totalDue = due?.totalDue ?? new Prisma.Decimal(0);
+        return {
+            ...lease,
+            totalDue,
+            dueInvoiceCount: due?.dueInvoiceCount ?? 0,
+            hasPreviousDue: totalDue.gt(0),
+        };
     });
 };
 

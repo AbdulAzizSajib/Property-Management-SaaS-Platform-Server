@@ -18,6 +18,7 @@ import { RentAgreementRoutes } from "../module/rentAgreement/rentAgreement.route
 import { RentIncreaseRoutes } from "../module/rentIncrease/rentIncrease.route";
 import { ReportsRoutes } from "../module/reports/reports.route";
 import { SubscriptionRoutes } from "../module/subscription/subscription.route";
+import { SubscriptionRequestRoutes } from "../module/subscriptionRequest/subscriptionRequest.route";
 import { TenantRoutes } from "../module/tenant/tenant.route";
 import { UnitRoutes } from "../module/unit/unit.route";
 import { UserRoutes } from "../module/user/user.route";
@@ -29,6 +30,7 @@ router.use("/users", UserRoutes);
 router.use("/admins", AdminRoutes);
 router.use("/organizations", OrganizationRoutes);
 router.use("/subscriptions", SubscriptionRoutes);
+router.use("/subscription-requests", SubscriptionRequestRoutes);
 router.use("/plan-configs", PlanConfigRoutes);
 router.use("/buildings", BuildingRoutes);
 router.use("/floors", FloorRoutes);

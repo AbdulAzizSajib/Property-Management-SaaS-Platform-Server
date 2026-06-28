@@ -1,9 +1,6 @@
 import status from "http-status";
 import { Prisma } from "../../../generated/prisma/client";
-import {
-    LineItemCategory,
-    PaymentStatus,
-} from "../../../generated/prisma/enums";
+import { PaymentStatus } from "../../../generated/prisma/enums";
 import AppError from "../../errorHelpers/AppError";
 import { IRequestUser } from "../../interfaces/requestUser.interface";
 import { prisma } from "../../lib/prisma";
@@ -33,7 +30,6 @@ const recordPayment = async (
 
     const invoice = await prisma.invoice.findFirst({
         where: { id: payload.invoiceId, organizationId },
-        include: { lineItems: true },
     });
     if (!invoice) {
         throw new AppError(status.NOT_FOUND, "Invoice not found");
@@ -41,6 +37,17 @@ const recordPayment = async (
 
     if (invoice.status === PaymentStatus.PAID) {
         throw new AppError(status.BAD_REQUEST, "Invoice is already paid");
+    }
+
+    if (invoice.status === PaymentStatus.CANCELLED) {
+        throw new AppError(status.BAD_REQUEST, "Cannot pay a cancelled invoice");
+    }
+
+    if (invoice.status === PaymentStatus.CARRIED_FORWARD) {
+        throw new AppError(
+            status.BAD_REQUEST,
+            "This invoice's balance was carried into a newer invoice. Record the payment against that invoice instead.",
+        );
     }
 
     const amount = new Prisma.Decimal(payload.amount);
@@ -87,83 +94,11 @@ const recordPayment = async (
             },
         });
 
-        // Cascade settlement of carried-forward "previous due".
-        //
-        // When this invoice was generated, the unpaid balance of older
-        // invoices was copied onto it as a PREVIOUS_DUE line item. That means
-        // the same money is owed on two invoices at once: the original (older)
-        // invoice still carries its own dueAmount, and this invoice carries a
-        // copy of it. Paying this invoice settles only itself — so without
-        // this step the older invoice would keep showing as due even though
-        // the tenant already paid it here.
-        //
-        // We figure out how much of the cumulative payment has now reached the
-        // PREVIOUS_DUE portion and apply exactly that much to the oldest
-        // unpaid invoices of the same lease, oldest-first.
-        const previousDue = invoice.lineItems
-            .filter((li) => li.category === LineItemCategory.PREVIOUS_DUE)
-            .reduce(
-                (sum, li) => sum.add(li.amount),
-                new Prisma.Decimal(0),
-            );
-
-        if (previousDue.gt(0)) {
-            // Charges that belong to THIS month (everything except the carried
-            // balance). The previous-due portion is only being paid once the
-            // payment exceeds the current-month charges.
-            const currentCharges =
-                new Prisma.Decimal(invoice.totalAmount).sub(previousDue);
-            const coveredPrevDue = newPaid.sub(currentCharges);
-
-            if (coveredPrevDue.gt(0)) {
-                // Cap at the carried amount (can't settle more than was carried).
-                let toApply = coveredPrevDue.gt(previousDue)
-                    ? previousDue
-                    : coveredPrevDue;
-
-                const olderUnpaid = await tx.invoice.findMany({
-                    where: {
-                        leaseId: invoice.leaseId,
-                        billingMonth: { lt: invoice.billingMonth },
-                        status: {
-                            in: [
-                                PaymentStatus.PARTIAL,
-                                PaymentStatus.DUE,
-                                PaymentStatus.OVERDUE,
-                            ],
-                        },
-                    },
-                    orderBy: { billingMonth: "asc" },
-                });
-
-                for (const older of olderUnpaid) {
-                    if (toApply.lte(0)) break;
-
-                    const olderDue = new Prisma.Decimal(older.dueAmount);
-                    const applied = toApply.gt(olderDue) ? olderDue : toApply;
-
-                    const olderNewPaid =
-                        new Prisma.Decimal(older.paidAmount).add(applied);
-                    const olderNewDue = olderDue.sub(applied);
-                    const olderStatus = olderNewDue.lessThanOrEqualTo(0)
-                        ? PaymentStatus.PAID
-                        : PaymentStatus.PARTIAL;
-
-                    await tx.invoice.update({
-                        where: { id: older.id },
-                        data: {
-                            paidAmount: olderNewPaid,
-                            dueAmount: olderNewDue.lessThan(0)
-                                ? new Prisma.Decimal(0)
-                                : olderNewDue,
-                            status: olderStatus,
-                        },
-                    });
-
-                    toApply = toApply.sub(applied);
-                }
-            }
-        }
+        // No cascade needed: when an older invoice's balance is carried
+        // forward, that older invoice is marked CARRIED_FORWARD with a zero
+        // due at generation time (see invoice.service.ts). The debt therefore
+        // lives only on this newest invoice, so settling it here is enough —
+        // there is no duplicate older balance left to reconcile.
 
         return payment;
     });
@@ -183,7 +118,7 @@ const getAllPayments = async (user: IRequestUser, query: IPaymentQuery) => {
         where,
         include: {
             tenant: { select: { id: true, name: true, phone: true } },
-            invoice: { select: { id: true, invoiceNumber: true } },
+            invoice: true,
         },
         orderBy: { paidAt: "desc" },
     });

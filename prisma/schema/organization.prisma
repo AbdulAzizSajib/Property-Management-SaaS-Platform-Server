@@ -24,6 +24,7 @@ model Organization {
   documents        Document[]
   platformPayments PlatformPayment[]
   activityLogs     ActivityLog[]
+  subscriptionRequests SubscriptionRequest[]
 
   @@index([slug])
 }

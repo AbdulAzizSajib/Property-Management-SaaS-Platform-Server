@@ -1,0 +1,29 @@
+// A manual payment / plan-change request. The owner sends money via bKash (or
+// another mobile-money method) to the platform's number, then submits the
+// transaction id here. A platform admin verifies the payment and approves the
+// request, which activates the requested plan. No automatic payment gateway.
+model SubscriptionRequest {
+  id            String                    @id @default(uuid(7))
+  targetPlan    SubscriptionPlan
+  amount        Decimal                   @db.Decimal(10, 2)
+  method        PaymentMethod             @default(BKASH)
+  senderNumber  String? // the mobile number the money was sent from
+  transactionId String? // bKash/Nagad/etc. transaction id (TrxID)
+  status        SubscriptionRequestStatus @default(PENDING)
+  reviewNote    String? // admin's note on approve/reject
+  reviewedAt    DateTime?
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  requestedById String?
+  requestedBy   User?   @relation("SubscriptionRequestedBy", fields: [requestedById], references: [id])
+
+  reviewedById String?
+  reviewedBy   User?   @relation("SubscriptionReviewedBy", fields: [reviewedById], references: [id])
+
+  @@index([organizationId])
+  @@index([status])
+}

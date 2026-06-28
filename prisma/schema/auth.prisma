@@ -34,6 +34,9 @@ model User {
   activityLogs       ActivityLog[]
   notifications      Notification[] @relation("NotificationRecipientUser")
 
+  subscriptionRequestsMade     SubscriptionRequest[] @relation("SubscriptionRequestedBy")
+  subscriptionRequestsReviewed SubscriptionRequest[] @relation("SubscriptionReviewedBy")
+
   @@index([organizationId])
   @@index([role])
   @@map("user")

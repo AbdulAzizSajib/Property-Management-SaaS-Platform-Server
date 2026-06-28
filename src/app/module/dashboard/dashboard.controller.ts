@@ -24,4 +24,14 @@ const getOccupancy = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
-export const DashboardController = { getSummary, getOccupancy };
+const getOverview = catchAsync(async (req: Request, res: Response) => {
+    const result = await DashboardService.getOverview(req.user);
+    sendResponse(res, {
+        httpStatusCode: status.OK,
+        success: true,
+        message: "Dashboard overview fetched successfully",
+        data: result,
+    });
+});
+
+export const DashboardController = { getSummary, getOccupancy, getOverview };

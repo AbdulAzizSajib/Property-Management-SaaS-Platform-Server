@@ -151,22 +151,29 @@ const PLAN_CONFIGS: Array<{
 
 export const seedPlanConfigs = async () => {
     try {
+        let created = 0;
         for (const config of PLAN_CONFIGS) {
             const { plan, priceMonthly, ...rest } = config;
-            await prisma.planConfig.upsert({
+            // Non-destructive: only insert a plan that doesn't exist yet. The
+            // admin dashboard owns price/limits/features after that, so a
+            // restart never overwrites live edits — it just guarantees the
+            // base plans exist on a fresh database.
+            const result = await prisma.planConfig.upsert({
                 where: { plan },
                 create: {
                     plan,
                     priceMonthly: new Prisma.Decimal(priceMonthly),
                     ...rest,
                 },
-                update: {
-                    priceMonthly: new Prisma.Decimal(priceMonthly),
-                    ...rest,
-                },
+                update: {},
             });
+            if (result.createdAt.getTime() === result.updatedAt.getTime()) {
+                created += 1;
+            }
         }
-        console.log(`Plan configs seeded: ${PLAN_CONFIGS.length} plans`);
+        console.log(
+            `Plan configs ensured: ${PLAN_CONFIGS.length} total, ${created} newly created`,
+        );
     } catch (error) {
         console.error("Error seeding plan configs:", error);
     }
