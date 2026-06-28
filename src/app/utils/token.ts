@@ -49,7 +49,7 @@ const setRefreshTokenCookie = (res: Response, token: string) => {
 }
 
 const setBetterAuthSessionCookie = (res: Response, token: string) => {
-    CookieUtils.setCookie(res, "better-auth.session_token", token, {
+    CookieUtils.setCookie(res, CookieUtils.getSessionCookieName(), token, {
         httpOnly: true,
         secure: true,
         sameSite: "none",

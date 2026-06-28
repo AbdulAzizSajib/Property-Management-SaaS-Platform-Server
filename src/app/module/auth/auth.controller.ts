@@ -49,10 +49,14 @@ const getMe = catchAsync(async (req: Request, res: Response) => {
 
 const getNewToken = catchAsync(async (req: Request, res: Response) => {
     const refreshToken = req.cookies.refreshToken;
-    const betterAuthSessionToken = req.cookies["better-auth.session_token"];
+    const betterAuthSessionToken = CookieUtils.getSessionToken(req);
 
     if (!refreshToken) {
         throw new AppError(status.UNAUTHORIZED, "Refresh token is missing");
+    }
+
+    if (!betterAuthSessionToken) {
+        throw new AppError(status.UNAUTHORIZED, "Session token is missing");
     }
 
     const result = await AuthService.getNewToken(
@@ -75,7 +79,12 @@ const getNewToken = catchAsync(async (req: Request, res: Response) => {
 });
 
 const changePassword = catchAsync(async (req: Request, res: Response) => {
-    const betterAuthSessionToken = req.cookies["better-auth.session_token"];
+    const betterAuthSessionToken = CookieUtils.getSessionToken(req);
+
+    if (!betterAuthSessionToken) {
+        throw new AppError(status.UNAUTHORIZED, "Session token is missing");
+    }
+
     const result = await AuthService.changePassword(
         req.body,
         betterAuthSessionToken,
@@ -96,7 +105,12 @@ const changePassword = catchAsync(async (req: Request, res: Response) => {
 });
 
 const logoutUser = catchAsync(async (req: Request, res: Response) => {
-    const betterAuthSessionToken = req.cookies["better-auth.session_token"];
+    const betterAuthSessionToken = CookieUtils.getSessionToken(req);
+
+    if (!betterAuthSessionToken) {
+        throw new AppError(status.UNAUTHORIZED, "Session token is missing");
+    }
+
     const result = await AuthService.logoutUser(betterAuthSessionToken);
 
     const cookieOptions = {
@@ -196,7 +210,7 @@ const googleLogin = catchAsync((req: Request, res: Response) => {
 
 const googleLoginSuccess = catchAsync(async (req: Request, res: Response) => {
     const redirectPath = (req.query.redirect as string) || "/dashboard";
-    const sessionToken = req.cookies["better-auth.session_token"];
+    const sessionToken = CookieUtils.getSessionToken(req);
 
     if (!sessionToken) {
         return res.redirect(
@@ -205,7 +219,9 @@ const googleLoginSuccess = catchAsync(async (req: Request, res: Response) => {
     }
 
     const session = await auth.api.getSession({
-        headers: { Cookie: `better-auth.session_token=${sessionToken}` },
+        headers: {
+            Cookie: `${CookieUtils.getSessionCookieName()}=${sessionToken}`,
+        },
     });
 
     if (!session) {

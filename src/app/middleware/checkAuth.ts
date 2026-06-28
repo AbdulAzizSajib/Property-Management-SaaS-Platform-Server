@@ -12,10 +12,7 @@ export const checkAuth =
     (...authRoles: Role[]) =>
     async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const rawSessionToken = CookieUtils.getCookie(
-                req,
-                "better-auth.session_token",
-            );
+            const rawSessionToken = CookieUtils.getSessionToken(req);
 
             if (!rawSessionToken) {
                 throw new AppError(
