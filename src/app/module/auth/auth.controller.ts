@@ -212,6 +212,10 @@ const googleLoginSuccess = catchAsync(async (req: Request, res: Response) => {
     const redirectPath = (req.query.redirect as string) || "/dashboard";
     const sessionToken = CookieUtils.getSessionToken(req);
 
+    // TEMP DEBUG: log what cookies actually arrive at google/success in prod
+    console.log("[google/success] cookie names:", Object.keys(req.cookies || {}));
+    console.log("[google/success] sessionToken found:", Boolean(sessionToken));
+
     if (!sessionToken) {
         return res.redirect(
             `${envVars.FRONTEND_URL}/login?error=oauth_failed`,
