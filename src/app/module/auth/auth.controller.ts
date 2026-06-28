@@ -49,14 +49,10 @@ const getMe = catchAsync(async (req: Request, res: Response) => {
 
 const getNewToken = catchAsync(async (req: Request, res: Response) => {
     const refreshToken = req.cookies.refreshToken;
-    const betterAuthSessionToken = CookieUtils.getSessionToken(req);
+    const betterAuthSessionToken = req.cookies["better-auth.session_token"];
 
     if (!refreshToken) {
         throw new AppError(status.UNAUTHORIZED, "Refresh token is missing");
-    }
-
-    if (!betterAuthSessionToken) {
-        throw new AppError(status.UNAUTHORIZED, "Session token is missing");
     }
 
     const result = await AuthService.getNewToken(
@@ -79,12 +75,7 @@ const getNewToken = catchAsync(async (req: Request, res: Response) => {
 });
 
 const changePassword = catchAsync(async (req: Request, res: Response) => {
-    const betterAuthSessionToken = CookieUtils.getSessionToken(req);
-
-    if (!betterAuthSessionToken) {
-        throw new AppError(status.UNAUTHORIZED, "Session token is missing");
-    }
-
+    const betterAuthSessionToken = req.cookies["better-auth.session_token"];
     const result = await AuthService.changePassword(
         req.body,
         betterAuthSessionToken,
@@ -105,12 +96,7 @@ const changePassword = catchAsync(async (req: Request, res: Response) => {
 });
 
 const logoutUser = catchAsync(async (req: Request, res: Response) => {
-    const betterAuthSessionToken = CookieUtils.getSessionToken(req);
-
-    if (!betterAuthSessionToken) {
-        throw new AppError(status.UNAUTHORIZED, "Session token is missing");
-    }
-
+    const betterAuthSessionToken = req.cookies["better-auth.session_token"];
     const result = await AuthService.logoutUser(betterAuthSessionToken);
 
     const cookieOptions = {
@@ -210,7 +196,7 @@ const googleLogin = catchAsync((req: Request, res: Response) => {
 
 const googleLoginSuccess = catchAsync(async (req: Request, res: Response) => {
     const redirectPath = (req.query.redirect as string) || "/dashboard";
-    const sessionToken = CookieUtils.getSessionToken(req);
+    const sessionToken = req.cookies["better-auth.session_token"];
 
     if (!sessionToken) {
         return res.redirect(
@@ -219,9 +205,7 @@ const googleLoginSuccess = catchAsync(async (req: Request, res: Response) => {
     }
 
     const session = await auth.api.getSession({
-        headers: {
-            Cookie: `${CookieUtils.getSessionCookieName()}=${sessionToken}`,
-        },
+        headers: { Cookie: `better-auth.session_token=${sessionToken}` },
     });
 
     if (!session) {
@@ -239,26 +223,14 @@ const googleLoginSuccess = catchAsync(async (req: Request, res: Response) => {
     const result = await AuthService.googleLoginSuccess(session);
     const { accessToken, refreshToken } = result;
 
+    tokenUtils.setAccessTokenCookie(res, accessToken);
+    tokenUtils.setRefreshTokenCookie(res, refreshToken);
+
     const isValidRedirectPath =
         redirectPath.startsWith("/") && !redirectPath.startsWith("//");
     const finalRedirectPath = isValidRedirectPath ? redirectPath : "/dashboard";
 
-    // Frontend and backend are on different domains, so cookies set here land on
-    // the backend's domain and the frontend's middleware never sees them. Mirror
-    // the email/password flow instead: hand the tokens to a frontend callback
-    // route, which re-sets them as httpOnly cookies on *its* own domain.
-    const callbackUrl = new URL(`${envVars.FRONTEND_URL}/auth/google/callback`);
-    callbackUrl.searchParams.set("accessToken", accessToken);
-    callbackUrl.searchParams.set("refreshToken", refreshToken);
-    // The Better Auth session token the frontend stores as
-    // `better-auth.session_token` (raw value, signature stripped).
-    callbackUrl.searchParams.set(
-        "sessionToken",
-        sessionToken.includes(".") ? sessionToken.split(".")[0] : sessionToken,
-    );
-    callbackUrl.searchParams.set("redirect", finalRedirectPath);
-
-    res.redirect(callbackUrl.toString());
+    res.redirect(`${envVars.FRONTEND_URL}${finalRedirectPath}`);
 });
 
 const handleOAuthError = catchAsync((req: Request, res: Response) => {

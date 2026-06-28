@@ -24,9 +24,6 @@ export const auth = betterAuth({
         google: {
             clientId: envVars.GOOGLE_CLIENT_ID,
             clientSecret: envVars.GOOGLE_CLIENT_SECRET,
-            // Show Google's account chooser (the user's logged-in accounts)
-            // instead of a blank "enter email" sign-in form.
-            prompt: "select_account",
             mapProfileToUser: () => {
                 return {
                     role: Role.OWNER,
