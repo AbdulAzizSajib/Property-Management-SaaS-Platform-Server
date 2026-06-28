@@ -34,6 +34,9 @@ const getAllInvoices = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
+// hellooooo
+
+
 const getInvoiceById = catchAsync(async (req: Request, res: Response) => {
     const result = await InvoiceService.getInvoiceById(
         req.user,
