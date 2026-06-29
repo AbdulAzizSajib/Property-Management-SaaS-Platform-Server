@@ -19,6 +19,7 @@ export const createBuildingZodSchema = z.object({
     city: z.string().max(60).optional(),
     area: z.string().max(60).optional(),
     totalFloors: z.number().int().min(1).max(200).optional(),
+    hasGroundFloor: z.boolean().optional(),
     description: z.string().max(500).optional(),
     caretakerId: z.string().optional(),
 });

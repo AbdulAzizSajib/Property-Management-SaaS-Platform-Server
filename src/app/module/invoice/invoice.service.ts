@@ -665,6 +665,7 @@ const getAllInvoices = async (user: IRequestUser, query: IInvoiceQuery) => {
     if (query.leaseId) where.leaseId = query.leaseId;
     if (query.tenantId) where.tenantId = query.tenantId;
     if (query.unitId) where.unitId = query.unitId;
+    if (query.buildingId) where.unit = { buildingId: query.buildingId };
 
     if (query.status) {
         const allowed = new Set(Object.values(PaymentStatus) as string[]);

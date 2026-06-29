@@ -77,14 +77,33 @@ const createBuilding = async (
         await assertCaretakerBelongsToOrg(payload.caretakerId, organizationId);
     }
 
+<<<<<<< HEAD
     const building = await prisma.$transaction(async (tx) => {
         const created = await tx.building.create({
             data: {
                 ...payload,
+=======
+    const { totalFloors, hasGroundFloor, ...buildingData } = payload;
+
+    // `totalFloors` from the form = number of above-ground floors.
+    // When a ground floor is included it adds one extra floor on top.
+    const aboveGround = totalFloors ?? 0;
+    const includeGround = hasGroundFloor ?? false;
+    const floorCount = aboveGround + (includeGround ? 1 : 0);
+
+    const building = await prisma.$transaction(async (tx) => {
+        const created = await tx.building.create({
+            data: {
+                ...buildingData,
+                // store the real total (ground floor included) so it matches
+                // the floors that actually exist
+                totalFloors: floorCount > 0 ? floorCount : undefined,
+>>>>>>> 701f2c3cea782a5d14e873af29cb1c7b6f39bb1a
                 organizationId,
             },
         });
 
+<<<<<<< HEAD
         if (payload.totalFloors && payload.totalFloors > 0) {
             await tx.floor.createMany({
                 data: Array.from({ length: payload.totalFloors }, (_, i) => ({
@@ -95,6 +114,31 @@ const createBuilding = async (
             });
         }
 
+=======
+        const floors: { buildingId: string; floorNumber: number; name: string }[] = [];
+
+        // ground floor is stored as floorNumber 0
+        if (includeGround) {
+            floors.push({
+                buildingId: created.id,
+                floorNumber: 0,
+                name: "Ground Floor",
+            });
+        }
+
+        for (let n = 1; n <= aboveGround; n++) {
+            floors.push({
+                buildingId: created.id,
+                floorNumber: n,
+                name: `Floor ${n}`,
+            });
+        }
+
+        if (floors.length > 0) {
+            await tx.floor.createMany({ data: floors });
+        }
+
+>>>>>>> 701f2c3cea782a5d14e873af29cb1c7b6f39bb1a
         return created;
     });
 

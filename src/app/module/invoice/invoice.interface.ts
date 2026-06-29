@@ -33,6 +33,7 @@ export interface IInvoiceQuery {
     leaseId?: string;
     tenantId?: string;
     unitId?: string;
+    buildingId?: string;
     // Single status or comma-separated list, e.g. "DUE,PARTIAL,OVERDUE"
     status?: PaymentStatus | string;
     // Single billing month — accepts "YYYY-MM" or any parseable date in that month

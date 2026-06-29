@@ -7,6 +7,7 @@ export interface ICreateBuildingPayload {
     city?: string;
     area?: string;
     totalFloors?: number;
+    hasGroundFloor?: boolean;
     description?: string;
     caretakerId?: string;
 }
