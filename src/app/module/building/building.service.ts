@@ -16,6 +16,18 @@ const assertOrg = (user: IRequestUser) => {
     return user.organizationId;
 };
 
+const ordinalFloorName = (n: number) => {
+    const mod100 = n % 100;
+    const mod10 = n % 10;
+    let suffix = "th";
+    if (mod100 < 11 || mod100 > 13) {
+        if (mod10 === 1) suffix = "st";
+        else if (mod10 === 2) suffix = "nd";
+        else if (mod10 === 3) suffix = "rd";
+    }
+    return `${n}${suffix} Floor`;
+};
+
 const assertCaretakerBelongsToOrg = async (
     caretakerId: string,
     organizationId: string,
@@ -65,11 +77,25 @@ const createBuilding = async (
         await assertCaretakerBelongsToOrg(payload.caretakerId, organizationId);
     }
 
-    const building = await prisma.building.create({
-        data: {
-            ...payload,
-            organizationId,
-        },
+    const building = await prisma.$transaction(async (tx) => {
+        const created = await tx.building.create({
+            data: {
+                ...payload,
+                organizationId,
+            },
+        });
+
+        if (payload.totalFloors && payload.totalFloors > 0) {
+            await tx.floor.createMany({
+                data: Array.from({ length: payload.totalFloors }, (_, i) => ({
+                    buildingId: created.id,
+                    floorNumber: i + 1,
+                    name: ordinalFloorName(i + 1),
+                })),
+            });
+        }
+
+        return created;
     });
 
     return building;
