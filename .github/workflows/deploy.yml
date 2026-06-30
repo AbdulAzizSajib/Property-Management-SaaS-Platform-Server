@@ -43,7 +43,11 @@ jobs:
       #    তাই build/migrate চলার আগে .env থাকা দরকার। এই .env runner-এ থাকে,
       #    server-এ যায় না (rsync .env পাঠায় না)।
       - name: Create .env from secret
-        run: echo "${{ secrets.ENV_FILE }}" > .env
+        env:
+          ENV_FILE: ${{ secrets.ENV_FILE }}
+        run: |
+          printf '%s' "$ENV_FILE" > .env
+          echo "==> .env line count: $(wc -l < .env)"
 
       # 5) Build: prisma generate && tsc && fix-imports
       #    এতে dist/ তৈরি হয়, ভেতরে dist/generated/prisma সহ।
