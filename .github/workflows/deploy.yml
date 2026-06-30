@@ -1,0 +1,92 @@
+name: Deploy to cPanel
+
+# main branch-এ push হলেই deploy চালু হবে।
+# চাইলে workflow_dispatch দিয়ে GitHub UI থেকে manually-ও চালানো যাবে।
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# একই সময়ে দুটো deploy যেন না চলে (পরেরটা আগেরটা cancel করবে)।
+concurrency:
+  group: deploy-cpanel
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1) কোড checkout
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2) pnpm setup (lock file এর সাথে consistent থাকার জন্য)
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.20.0
+
+      # 3) Node 20 (server-এর সাথে মিলিয়ে)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      # 4) সব dependency install (build + prisma generate এর জন্য দরকার)
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 5) Build: prisma generate && tsc && fix-imports
+      #    এতে dist/ তৈরি হয়, ভেতরে dist/generated/prisma সহ।
+      - name: Build
+        run: pnpm build
+
+      # 6) Database migration — GitHub runner থেকে Neon-এ apply
+      #    (server-এর port 5432 issue এড়াতে এখান থেকেই করা হয়)
+      - name: Apply database migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm prisma migrate deploy
+
+      # 7) rsync দিয়ে শুধু দরকারি ফাইল server-এ পাঠানো।
+      #    SSH key secret থেকে বানিয়ে নিই।
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p ${{ secrets.SSH_PORT }} -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      # dist/, package.json, prisma/, public/, .npmrc — শুধু এগুলোই server-এ যাবে।
+      # node_modules, .env, src/ পাঠানো হয় না (DEPLOYMENT.md অনুযায়ী)।
+      - name: Deploy files via rsync
+        run: |
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }}" \
+            ./dist/ \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.APP_PATH }}/dist/
+
+          rsync -az \
+            -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }}" \
+            ./package.json ./.npmrc \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.APP_PATH }}/
+
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }}" \
+            ./prisma/ \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.APP_PATH }}/prisma/
+
+          rsync -az \
+            -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }}" \
+            ./scripts/ \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.APP_PATH }}/scripts/
+
+      # 8) Server-এ remote deploy script চালানো:
+      #    package.json hash বদলালে npm install, তারপর Passenger restart।
+      - name: Run remote deploy (install if needed + restart)
+        run: |
+          ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            "bash ${{ secrets.APP_PATH }}/scripts/server-deploy.sh"
