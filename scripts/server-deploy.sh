@@ -13,9 +13,13 @@ HASH_FILE="$APP_DIR/.deploy-pkg-hash"
 
 cd "$APP_DIR"
 
-# cPanel Node 20 environment activate (node + npm PATH-এ আসে)
+# cPanel Node 20 environment activate (node + npm PATH-এ আসে)।
+# cPanel-এর activate script CL_VIRTUAL_ENV-এর মতো unset variable ছোঁয়,
+# তাই source করার সময় `set -u` (nounset) সাময়িকভাবে বন্ধ রাখি।
+set +u
 # shellcheck disable=SC1090
 source "$NODE_ENV_ACTIVATE"
+set -u
 
 echo "==> Node: $(node -v), npm: $(npm -v)"
 
