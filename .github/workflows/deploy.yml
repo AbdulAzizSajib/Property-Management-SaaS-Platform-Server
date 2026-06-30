@@ -38,6 +38,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # 4.5) .env ফাইল বানাই ENV_FILE secret থেকে।
+      #    prisma.config.ts → env.ts লোড হওয়ার সময় সব env variable required,
+      #    তাই build/migrate চলার আগে .env থাকা দরকার। এই .env runner-এ থাকে,
+      #    server-এ যায় না (rsync .env পাঠায় না)।
+      - name: Create .env from secret
+        run: echo "${{ secrets.ENV_FILE }}" > .env
+
       # 5) Build: prisma generate && tsc && fix-imports
       #    এতে dist/ তৈরি হয়, ভেতরে dist/generated/prisma সহ।
       - name: Build
@@ -45,9 +52,8 @@ jobs:
 
       # 6) Database migration — GitHub runner থেকে Neon-এ apply
       #    (server-এর port 5432 issue এড়াতে এখান থেকেই করা হয়)
+      #    DATABASE_URL আগের step-এ বানানো .env থেকেই আসবে।
       - name: Apply database migrations
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: pnpm prisma migrate deploy
 
       # 7) rsync দিয়ে শুধু দরকারি ফাইল server-এ পাঠানো।
