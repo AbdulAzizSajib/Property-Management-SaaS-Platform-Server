@@ -51,7 +51,7 @@ app.use("/api/v1", IndexRoutes);
 app.get('/', async (req: Request, res: Response) => {
     res.status(201).json({
         success: true,
-        message: 'API is working',
+        message: 'API is working and running successfully CI/CD',
     })
 });
 
