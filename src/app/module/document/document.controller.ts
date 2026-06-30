@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import status from "http-status";
+import { uploadFileToCloudinary } from "../../config/cloudinary.config";
 import AppError from "../../errorHelpers/AppError";
 import { catchAsync } from "../../shared/catchAsync";
 import { sendResponse } from "../../shared/sendResponse";
@@ -10,7 +11,8 @@ const uploadDocument = catchAsync(async (req: Request, res: Response) => {
         throw new AppError(status.BAD_REQUEST, "No file uploaded");
     }
 
-    const fileUrl = (req.file as Express.Multer.File & { path: string }).path;
+    const uploadResult = await uploadFileToCloudinary(req.file.buffer, req.file.originalname);
+    const fileUrl = uploadResult.secure_url;
 
     const result = await DocumentService.uploadDocument(req.user, {
         name: req.body.name || req.file.originalname,

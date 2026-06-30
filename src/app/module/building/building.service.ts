@@ -16,18 +16,6 @@ const assertOrg = (user: IRequestUser) => {
     return user.organizationId;
 };
 
-const ordinalFloorName = (n: number) => {
-    const mod100 = n % 100;
-    const mod10 = n % 10;
-    let suffix = "th";
-    if (mod100 < 11 || mod100 > 13) {
-        if (mod10 === 1) suffix = "st";
-        else if (mod10 === 2) suffix = "nd";
-        else if (mod10 === 3) suffix = "rd";
-    }
-    return `${n}${suffix} Floor`;
-};
-
 const assertCaretakerBelongsToOrg = async (
     caretakerId: string,
     organizationId: string,
@@ -77,12 +65,6 @@ const createBuilding = async (
         await assertCaretakerBelongsToOrg(payload.caretakerId, organizationId);
     }
 
-<<<<<<< HEAD
-    const building = await prisma.$transaction(async (tx) => {
-        const created = await tx.building.create({
-            data: {
-                ...payload,
-=======
     const { totalFloors, hasGroundFloor, ...buildingData } = payload;
 
     // `totalFloors` from the form = number of above-ground floors.
@@ -98,23 +80,10 @@ const createBuilding = async (
                 // store the real total (ground floor included) so it matches
                 // the floors that actually exist
                 totalFloors: floorCount > 0 ? floorCount : undefined,
->>>>>>> 701f2c3cea782a5d14e873af29cb1c7b6f39bb1a
                 organizationId,
             },
         });
 
-<<<<<<< HEAD
-        if (payload.totalFloors && payload.totalFloors > 0) {
-            await tx.floor.createMany({
-                data: Array.from({ length: payload.totalFloors }, (_, i) => ({
-                    buildingId: created.id,
-                    floorNumber: i + 1,
-                    name: ordinalFloorName(i + 1),
-                })),
-            });
-        }
-
-=======
         const floors: { buildingId: string; floorNumber: number; name: string }[] = [];
 
         // ground floor is stored as floorNumber 0
@@ -138,7 +107,6 @@ const createBuilding = async (
             await tx.floor.createMany({ data: floors });
         }
 
->>>>>>> 701f2c3cea782a5d14e873af29cb1c7b6f39bb1a
         return created;
     });
 
