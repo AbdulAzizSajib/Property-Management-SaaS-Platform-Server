@@ -1,0 +1,113 @@
+{
+  "info": {
+    "name": "TenantForm CRUD",
+    "description": "CRUD endpoints for TenantForm (Property Management SaaS). Auth is cookie-based (better-auth.session_token + accessToken). Log in first via your auth request so Postman's cookie jar holds the session, then these requests will send cookies automatically.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "tenantId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tenantFormId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Create Tenant Form",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "    const id = pm.response.json().data.id;",
+              "    pm.collectionVariables.set('tenantFormId', id);",
+              "    console.log('Saved tenantFormId =', id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/tenant-forms",
+          "host": ["{{base_url}}"],
+          "path": ["tenant-forms"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"name\": \"Karim Rahman\",\n  \"fatherName\": \"Abdul Rahman\",\n  \"motherName\": \"Ayesha Begum\",\n  \"dateOfBirth\": \"1990-05-14\",\n  \"maritalStatus\": \"Married\",\n  \"parmanentAddress\": \"Village Road, Sylhet\",\n  \"occupationAndAddress\": \"Software Engineer, Dhaka\",\n  \"religion\": \"Islam\",\n  \"educationalQualification\": \"BSc in CSE\",\n  \"phone\": \"01711000000\",\n  \"email\": \"karim@example.com\",\n  \"nidNumber\": \"1234567890\",\n  \"passportNumber\": \"BP0123456\",\n  \"reasonForMoving\": \"Job relocation\",\n  \"rentDate\": \"2026-07-01\",\n  \"submittedToPolice\": false,\n  \"emergencyContact\": {\n    \"name\": \"Rahim Uddin\",\n    \"phone\": \"01822000000\",\n    \"address\": \"Uttara, Dhaka\",\n    \"relationship\": \"Brother\"\n  },\n  \"familyMembers\": [\n    {\n      \"name\": \"Sadia Karim\",\n      \"age\": \"1992-03-10\",\n      \"relationship\": \"Wife\",\n      \"occupation\": \"Teacher\",\n      \"contactNumber\": \"01933000000\"\n    }\n  ],\n  \"maidInfo\": {\n    \"name\": \"Rina\",\n    \"age\": \"2000-01-01\",\n    \"contactNumber\": \"01644000000\",\n    \"parmanentAddress\": \"Barisal\"\n  },\n  \"driverInfo\": {\n    \"name\": \"Jashim\",\n    \"age\": \"1988-08-08\",\n    \"contactNumber\": \"01555000000\",\n    \"parmanentAddress\": \"Comilla\"\n  },\n  \"previousHouseOwner\": {\n    \"name\": \"Former Landlord\",\n    \"contactNumber\": \"01766000000\"\n  },\n  \"presentHouseOwner\": {\n    \"name\": \"Current Landlord\",\n    \"contactNumber\": \"01877000000\"\n  }\n}"
+        }
+      }
+    },
+    {
+      "name": "Get All Tenant Forms",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/tenant-forms",
+          "host": ["{{base_url}}"],
+          "path": ["tenant-forms"]
+        }
+      }
+    },
+    {
+      "name": "Get Tenant Form By Id",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/tenant-forms/{{tenantFormId}}",
+          "host": ["{{base_url}}"],
+          "path": ["tenant-forms", "{{tenantFormId}}"]
+        }
+      }
+    },
+    {
+      "name": "Update Tenant Form",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/tenant-forms/{{tenantFormId}}",
+          "host": ["{{base_url}}"],
+          "path": ["tenant-forms", "{{tenantFormId}}"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"maritalStatus\": \"Single\",\n  \"reasonForMoving\": \"Closer to office\",\n  \"submittedToPolice\": true\n}"
+        }
+      }
+    },
+    {
+      "name": "Delete Tenant Form",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/tenant-forms/{{tenantFormId}}",
+          "host": ["{{base_url}}"],
+          "path": ["tenant-forms", "{{tenantFormId}}"]
+        }
+      }
+    }
+  ]
+}

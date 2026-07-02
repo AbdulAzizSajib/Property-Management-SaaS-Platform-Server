@@ -20,6 +20,7 @@ import { ReportsRoutes } from "../module/reports/reports.route";
 import { SubscriptionRoutes } from "../module/subscription/subscription.route";
 import { SubscriptionRequestRoutes } from "../module/subscriptionRequest/subscriptionRequest.route";
 import { TenantRoutes } from "../module/tenant/tenant.route";
+import { TenantFormRoutes } from "../module/tenantForm/tenantForm.route";
 import { UnitRoutes } from "../module/unit/unit.route";
 import { UserRoutes } from "../module/user/user.route";
 
@@ -36,6 +37,7 @@ router.use("/buildings", BuildingRoutes);
 router.use("/floors", FloorRoutes);
 router.use("/units", UnitRoutes);
 router.use("/tenants", TenantRoutes);
+router.use("/tenant-forms", TenantFormRoutes);
 router.use("/leases", LeaseRoutes);
 router.use("/invoices", InvoiceRoutes);
 router.use("/payments", PaymentRoutes);

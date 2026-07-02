@@ -1,0 +1,130 @@
+model TenantForm {
+  id                       String   @id @default(uuid(7))
+  name                     String
+  fatherName               String
+  motherName               String?
+  dateOfBirth              DateTime?
+  maritalStatus            String?
+  parmanentAddress         String?
+  occupationAndAddress     String?
+  religion                 String?
+  educationalQualification String?
+  phone                    String?
+  email                    String?
+  nidNumber                String?
+  passportNumber           String?
+  reasonForMoving          String?
+  rentDate                 DateTime?
+  submittedToPolice        Boolean  @default(false)
+
+  // Police-form header: DMP division / thana
+  division String?
+  thana    String?
+
+  // Rented property address (right-hand block of the DMP form)
+  flatFloor   String?
+  houseNo     String?
+  roadNo      String?
+  areaName    String?
+  postCode    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  tenantId String @unique
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  familyMembers      FamilyMember[]
+  emergencyContact   EmergencyContact?
+  maidInfo           MaidInfo?
+  driverInfo         DriverInfo?
+  previousHouseOwner PreviousHouseOwner?
+  presentHouseOwner  PresentHouseOwner?
+
+  @@index([organizationId])
+  @@index([phone])
+}
+
+model EmergencyContact {
+  id           String   @id @default(uuid(7))
+  name         String
+  phone        String
+  address      String?
+  relationship String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenantFormId String     @unique
+  tenantForm   TenantForm @relation(fields: [tenantFormId], references: [id], onDelete: Cascade)
+}
+
+model FamilyMember {
+  id            String    @id @default(uuid(7))
+  name          String
+  age           DateTime?
+  relationship  String?
+  occupation    String?
+  contactNumber String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenantFormId String
+  tenantForm   TenantForm @relation(fields: [tenantFormId], references: [id], onDelete: Cascade)
+
+  @@index([tenantFormId])
+}
+
+model MaidInfo {
+  id               String    @id @default(uuid(7))
+  name             String
+  age              DateTime?
+  nidNumber        String?
+  contactNumber    String?
+  parmanentAddress String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  tenantFormId String     @unique
+  tenantForm   TenantForm @relation(fields: [tenantFormId], references: [id], onDelete: Cascade)
+}
+
+model DriverInfo {
+  id               String    @id @default(uuid(7))
+  name             String
+  age              DateTime?
+  nidNumber        String?
+  contactNumber    String?
+  parmanentAddress String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  tenantFormId String     @unique
+  tenantForm   TenantForm @relation(fields: [tenantFormId], references: [id], onDelete: Cascade)
+}
+
+model PreviousHouseOwner {
+  id            String   @id @default(uuid(7))
+  name          String
+  contactNumber String?
+  address       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenantFormId String     @unique
+  tenantForm   TenantForm @relation(fields: [tenantFormId], references: [id], onDelete: Cascade)
+}
+
+model PresentHouseOwner {
+  id            String   @id @default(uuid(7))
+  name          String
+  contactNumber String?
+  address       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenantFormId String     @unique
+  tenantForm   TenantForm @relation(fields: [tenantFormId], references: [id], onDelete: Cascade)
+}

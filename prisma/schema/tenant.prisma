@@ -26,6 +26,7 @@ model Tenant {
   agreements RentAgreement[]
   complaints Complaint[]
   documents  Document[]
+  tenantForm TenantForm?
 
   @@index([organizationId])
   @@index([phone])

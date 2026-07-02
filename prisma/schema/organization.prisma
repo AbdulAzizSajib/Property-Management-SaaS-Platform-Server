@@ -25,6 +25,7 @@ model Organization {
   platformPayments PlatformPayment[]
   activityLogs     ActivityLog[]
   subscriptionRequests SubscriptionRequest[]
+  tenantForms          TenantForm[]
 
   @@index([slug])
 }
