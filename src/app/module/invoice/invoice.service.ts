@@ -1,7 +1,6 @@
 import status from "http-status";
 import { Prisma } from "../../../generated/prisma/client";
 import {
-    BillingMode,
     InvoiceType,
     LeaseStatus,
     LineItemCategory,
@@ -109,70 +108,12 @@ type LeaseForInvoice = {
     monthlyRent: Prisma.Decimal;
     serviceCharge: Prisma.Decimal;
     rentDueDay: number;
-    billingMode: BillingMode;
-    gasCharge: Prisma.Decimal | null;
-    waterCharge: Prisma.Decimal | null;
-    electricityCharge: Prisma.Decimal | null;
-    internetCharge: Prisma.Decimal | null;
 };
 
 type LineItemInput = {
     category: LineItemCategory;
     description: string;
     amount: Prisma.Decimal;
-};
-
-const buildUtilityLineItems = (
-    lease: LeaseForInvoice,
-    override?: {
-        gas?: number;
-        water?: number;
-        electricity?: number;
-        internet?: number;
-    },
-): LineItemInput[] => {
-    if (lease.billingMode !== BillingMode.FIXED_SEPARATE) return [];
-
-    const pick = (
-        manual: number | undefined,
-        fixed: Prisma.Decimal | null,
-    ): Prisma.Decimal | null => {
-        if (manual !== undefined) return new Prisma.Decimal(manual);
-        return fixed;
-    };
-
-    const items: LineItemInput[] = [];
-    const gas = pick(override?.gas, lease.gasCharge);
-    const water = pick(override?.water, lease.waterCharge);
-    const electricity = pick(override?.electricity, lease.electricityCharge);
-    const internet = pick(override?.internet, lease.internetCharge);
-
-    if (gas && gas.gt(0))
-        items.push({
-            category: LineItemCategory.GAS,
-            description: "Gas",
-            amount: gas,
-        });
-    if (water && water.gt(0))
-        items.push({
-            category: LineItemCategory.WATER,
-            description: "Water",
-            amount: water,
-        });
-    if (electricity && electricity.gt(0))
-        items.push({
-            category: LineItemCategory.ELECTRICITY,
-            description: "Electricity",
-            amount: electricity,
-        });
-    if (internet && internet.gt(0))
-        items.push({
-            category: LineItemCategory.INTERNET,
-            description: "Internet",
-            amount: internet,
-        });
-
-    return items;
 };
 
 type UnpaidSource = {
@@ -262,14 +203,6 @@ const generateOne = async (
 ) => {
     const organizationId = assertOrg(user);
 
-    // Conflict: cannot pass both utilities breakdown and utilityAmount
-    if (payload.utilityAmount !== undefined && payload.utilities) {
-        throw new AppError(
-            status.BAD_REQUEST,
-            "Provide either 'utilities' (breakdown) or 'utilityAmount' (single amount), not both.",
-        );
-    }
-
     const lease = await prisma.lease.findFirst({
         where: {
             id: payload.leaseId,
@@ -293,14 +226,6 @@ const generateOne = async (
         );
     }
 
-    // utilities override only allowed for FIXED_SEPARATE leases
-    if (payload.utilities && lease.billingMode !== BillingMode.FIXED_SEPARATE) {
-        throw new AppError(
-            status.BAD_REQUEST,
-            "Utility breakdown only allowed for FIXED_SEPARATE leases. Use 'utilityAmount' for one-off amounts on INCLUSIVE leases.",
-        );
-    }
-
     const billingMonth = monthStart(new Date(payload.billingMonth));
 
     validateBillingMonth(billingMonth, lease);
@@ -321,18 +246,6 @@ const generateOne = async (
 
     const rent = new Prisma.Decimal(lease.monthlyRent);
     const serviceCharge = new Prisma.Decimal(lease.serviceCharge);
-    const penalty = new Prisma.Decimal(payload.penaltyAmount ?? 0);
-
-    const utilities = buildUtilityLineItems(lease, payload.utilities);
-    const legacyUtility =
-        payload.utilityAmount !== undefined && utilities.length === 0
-            ? new Prisma.Decimal(payload.utilityAmount)
-            : new Prisma.Decimal(0);
-    const utilityFromItems = utilities.reduce(
-        (sum, item) => sum.add(item.amount),
-        new Prisma.Decimal(0),
-    );
-    const utility = utilityFromItems.add(legacyUtility);
 
     // Carry forward any unpaid balance from previous invoices of this lease.
     // One PREVIOUS_DUE line item is emitted per source invoice so the new
@@ -380,7 +293,7 @@ const generateOne = async (
         new Prisma.Decimal(0),
     );
 
-    const total = rent.add(serviceCharge).add(utility).add(penalty).add(previousDue);
+    const total = rent.add(serviceCharge).add(previousDue);
 
     if (total.lte(0)) {
         throw new AppError(
@@ -410,25 +323,6 @@ const generateOne = async (
                   },
               ]
             : []),
-        ...utilities,
-        ...(legacyUtility.gt(0)
-            ? [
-                  {
-                      category: LineItemCategory.OTHER,
-                      description: "Utilities",
-                      amount: legacyUtility,
-                  },
-              ]
-            : []),
-        ...(penalty.gt(0)
-            ? [
-                  {
-                      category: LineItemCategory.PENALTY,
-                      description: "Late Payment Penalty",
-                      amount: penalty,
-                  },
-              ]
-            : []),
         ...previousDueItems,
     ];
 
@@ -447,8 +341,6 @@ const generateOne = async (
                 dueDate,
                 rentAmount: rent,
                 serviceCharge,
-                utilityAmount: utility,
-                penaltyAmount: penalty,
                 totalAmount: total,
                 dueAmount: total,
                 notes: payload.notes,
@@ -502,11 +394,25 @@ const generateMonthlyBatch = async (
         );
     }
 
+    // Optional building filter — only bill leases whose unit is in this building.
+    if (payload.buildingId) {
+        const building = await prisma.building.findFirst({
+            where: { id: payload.buildingId, organizationId },
+            select: { id: true },
+        });
+        if (!building) {
+            throw new AppError(status.NOT_FOUND, "Building not found");
+        }
+    }
+
     const activeLeases = await prisma.lease.findMany({
         where: {
             organizationId,
             status: LeaseStatus.ACTIVE,
             tenant: { isActive: true },
+            ...(payload.buildingId
+                ? { unit: { buildingId: payload.buildingId } }
+                : {}),
         },
     });
 
@@ -539,11 +445,6 @@ const generateMonthlyBatch = async (
 
         const rent = new Prisma.Decimal(lease.monthlyRent);
         const sc = new Prisma.Decimal(lease.serviceCharge);
-        const utilities = buildUtilityLineItems(lease);
-        const utilityTotal = utilities.reduce(
-            (sum, item) => sum.add(item.amount),
-            new Prisma.Decimal(0),
-        );
 
         // Carry forward any unpaid balance from previous invoices of this
         // lease — one PREVIOUS_DUE line item per source invoice (see
@@ -573,7 +474,7 @@ const generateMonthlyBatch = async (
             new Prisma.Decimal(0),
         );
 
-        const total = rent.add(sc).add(utilityTotal).add(previousDue);
+        const total = rent.add(sc).add(previousDue);
 
         if (total.lte(0)) {
             skipped.push(lease.id);
@@ -593,7 +494,6 @@ const generateMonthlyBatch = async (
                     dueDate,
                     rentAmount: rent,
                     serviceCharge: sc,
-                    utilityAmount: utilityTotal,
                     totalAmount: total,
                     dueAmount: total,
                     organizationId,
@@ -616,7 +516,6 @@ const generateMonthlyBatch = async (
                                       },
                                   ]
                                 : []),
-                            ...utilities,
                             ...previousDueItems,
                         ],
                     },
@@ -778,16 +677,8 @@ const updateInvoice = async (
 ) => {
     const organizationId = assertOrg(user);
 
-    if (payload.utilityAmount !== undefined && payload.utilities) {
-        throw new AppError(
-            status.BAD_REQUEST,
-            "Provide either 'utilities' (breakdown) or 'utilityAmount' (single amount), not both.",
-        );
-    }
-
     const invoice = await prisma.invoice.findFirst({
         where: { id, organizationId },
-        include: { lease: true, payments: true },
     });
 
     if (!invoice) {
@@ -808,161 +699,24 @@ const updateInvoice = async (
         );
     }
 
-    const hasPayments = invoice.payments.length > 0;
-
-    // Notes can always be edited
+    // Only the due date and notes are editable; the charged amounts are
+    // derived from the lease and never edited directly.
     const data: Prisma.InvoiceUpdateInput = {};
-    let needsRecompute = false;
 
     if (payload.notes !== undefined) {
         data.notes = payload.notes;
     }
 
-    // Financial fields editable only when no payments exist
-    const financialFields = [
-        payload.dueDate,
-        payload.penaltyAmount,
-        payload.utilityAmount,
-        payload.utilities,
-    ];
-    const hasFinancialEdit = financialFields.some((f) => f !== undefined);
-
-    if (hasFinancialEdit) {
-        if (hasPayments) {
-            throw new AppError(
-                status.BAD_REQUEST,
-                "Cannot edit financial fields after payments have been recorded. Cancel and recreate the invoice instead.",
-            );
-        }
-
-        if (
-            payload.utilities &&
-            invoice.lease.billingMode !== BillingMode.FIXED_SEPARATE
-        ) {
-            throw new AppError(
-                status.BAD_REQUEST,
-                "Utility breakdown only allowed for FIXED_SEPARATE leases",
-            );
-        }
-
-        if (payload.dueDate) {
-            const newDueDate = new Date(payload.dueDate);
-            validateDueDate(newDueDate, invoice.billingMonth);
-            data.dueDate = newDueDate;
-        }
-
-        needsRecompute =
-            payload.penaltyAmount !== undefined ||
-            payload.utilityAmount !== undefined ||
-            payload.utilities !== undefined;
+    if (payload.dueDate) {
+        const newDueDate = new Date(payload.dueDate);
+        validateDueDate(newDueDate, invoice.billingMonth);
+        data.dueDate = newDueDate;
     }
 
-    if (!needsRecompute) {
-        return prisma.invoice.update({
-            where: { id },
-            data,
-            include: { lineItems: true },
-        });
-    }
-
-    // Recompute totals and line items
-    const rent = new Prisma.Decimal(invoice.rentAmount);
-    const serviceCharge = new Prisma.Decimal(invoice.serviceCharge);
-    const penalty =
-        payload.penaltyAmount !== undefined
-            ? new Prisma.Decimal(payload.penaltyAmount)
-            : new Prisma.Decimal(invoice.penaltyAmount);
-
-    const utilityItems = payload.utilities
-        ? buildUtilityLineItems(invoice.lease, payload.utilities)
-        : [];
-    const legacyUtility =
-        payload.utilityAmount !== undefined && utilityItems.length === 0
-            ? new Prisma.Decimal(payload.utilityAmount)
-            : new Prisma.Decimal(0);
-
-    let utility: Prisma.Decimal;
-    let utilityLineItems: LineItemInput[] = [];
-
-    if (payload.utilities !== undefined || payload.utilityAmount !== undefined) {
-        utility = utilityItems
-            .reduce((sum, item) => sum.add(item.amount), new Prisma.Decimal(0))
-            .add(legacyUtility);
-        utilityLineItems = utilityItems;
-    } else {
-        utility = new Prisma.Decimal(invoice.utilityAmount);
-    }
-
-    const total = rent.add(serviceCharge).add(utility).add(penalty);
-
-    if (total.lte(0)) {
-        throw new AppError(
-            status.BAD_REQUEST,
-            "Invoice total must be greater than 0",
-        );
-    }
-
-    const newLineItems: LineItemInput[] = [
-        {
-            category: LineItemCategory.RENT,
-            description: "Monthly Rent",
-            amount: rent,
-        },
-        ...(serviceCharge.gt(0)
-            ? [
-                  {
-                      category: LineItemCategory.SERVICE_CHARGE,
-                      description: "Service Charge",
-                      amount: serviceCharge,
-                  },
-              ]
-            : []),
-        ...utilityLineItems,
-        ...(legacyUtility.gt(0)
-            ? [
-                  {
-                      category: LineItemCategory.OTHER,
-                      description: "Utilities",
-                      amount: legacyUtility,
-                  },
-              ]
-            : []),
-        ...(penalty.gt(0)
-            ? [
-                  {
-                      category: LineItemCategory.PENALTY,
-                      description: "Late Payment Penalty",
-                      amount: penalty,
-                  },
-              ]
-            : []),
-    ];
-
-    return prisma.$transaction(async (tx) => {
-        if (
-            payload.utilities !== undefined ||
-            payload.utilityAmount !== undefined ||
-            payload.penaltyAmount !== undefined
-        ) {
-            await tx.invoiceLineItem.deleteMany({ where: { invoiceId: id } });
-        }
-
-        return tx.invoice.update({
-            where: { id },
-            data: {
-                ...data,
-                penaltyAmount: penalty,
-                utilityAmount: utility,
-                totalAmount: total,
-                dueAmount: total,
-                ...((payload.utilities !== undefined ||
-                    payload.utilityAmount !== undefined ||
-                    payload.penaltyAmount !== undefined) && {
-                    lineItems: { create: newLineItems },
-                }),
-            },
-            include: { lineItems: true },
-        });
+    return prisma.invoice.update({
+        where: { id },
+        data,
+        include: { lineItems: true },
     });
 };
 

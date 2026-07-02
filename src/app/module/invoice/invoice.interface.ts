@@ -4,16 +4,6 @@ export interface IGenerateInvoicePayload {
     leaseId: string;
     billingMonth: string;
     dueDate?: string;
-    // Legacy single-amount field (used for INCLUSIVE mode or one-off utility fee)
-    utilityAmount?: number;
-    // Override lease-level fixed utility charges for this invoice only
-    utilities?: {
-        gas?: number;
-        water?: number;
-        electricity?: number;
-        internet?: number;
-    };
-    penaltyAmount?: number;
     // Which earlier unpaid invoices of this lease to roll into this one.
     // Omit or pass [] to NOT carry any previous due — the invoice will then
     // only contain the current month's charges. Each id must be an outstanding
@@ -24,6 +14,8 @@ export interface IGenerateInvoicePayload {
 
 export interface IGenerateMonthlyPayload {
     billingMonth: string;
+    // Optional: only generate invoices for leases whose unit is in this building.
+    buildingId?: string;
     // Bulk run defaults to carrying every outstanding balance forward. Pass
     // false to generate plain current-month invoices without any carry-over.
     carryForward?: boolean;
@@ -47,14 +39,6 @@ export interface IInvoiceQuery {
 
 export interface IUpdateInvoicePayload {
     dueDate?: string;
-    penaltyAmount?: number;
-    utilityAmount?: number;
-    utilities?: {
-        gas?: number;
-        water?: number;
-        electricity?: number;
-        internet?: number;
-    };
     notes?: string;
 }
 

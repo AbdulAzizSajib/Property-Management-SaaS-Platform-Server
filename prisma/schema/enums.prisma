@@ -151,11 +151,6 @@ enum SubscriptionPlan {
   BUSINESS
 }
 
-enum BillingMode {
-  INCLUSIVE // utilities & service charge included in monthlyRent
-  FIXED_SEPARATE // fixed monthly utility/service amounts billed as line items
-}
-
 enum LineItemCategory {
   RENT
   SERVICE_CHARGE

@@ -1,5 +1,3 @@
-import { BillingMode } from "../../../generated/prisma/enums";
-
 export interface ICreateLeasePayload {
     tenantId: string;
     unitId: string;
@@ -10,11 +8,6 @@ export interface ICreateLeasePayload {
     serviceCharge?: number;
     securityDeposit?: number;
     rentDueDay?: number;
-    billingMode?: BillingMode;
-    gasCharge?: number;
-    waterCharge?: number;
-    electricityCharge?: number;
-    internetCharge?: number;
     notes?: string;
 }
 

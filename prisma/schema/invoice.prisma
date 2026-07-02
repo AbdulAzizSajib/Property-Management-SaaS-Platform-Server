@@ -8,8 +8,6 @@ model Invoice {
   dueDate       DateTime
   rentAmount    Decimal       @default(0) @db.Decimal(12, 2)
   serviceCharge Decimal       @default(0) @db.Decimal(12, 2)
-  utilityAmount Decimal       @default(0) @db.Decimal(12, 2)
-  penaltyAmount Decimal       @default(0) @db.Decimal(12, 2)
   totalAmount   Decimal       @db.Decimal(12, 2)
   paidAmount    Decimal       @default(0) @db.Decimal(12, 2)
   dueAmount     Decimal       @default(0) @db.Decimal(12, 2)
